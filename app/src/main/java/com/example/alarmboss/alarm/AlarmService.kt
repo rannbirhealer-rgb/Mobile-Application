@@ -16,6 +16,7 @@ import android.os.VibratorManager
 import androidx.core.app.NotificationCompat
 import com.example.alarmboss.AlarmBossApp
 import com.example.alarmboss.R
+import com.example.alarmboss.engine.AlarmTimeCalculator
 import com.example.alarmboss.ui.ringing.AlarmRingingActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -55,6 +56,18 @@ class AlarmService : Service() {
         val app = application as AlarmBossApp
         scope.launch {
             val alarm = app.repository.getAlarm(alarmId) ?: return@launch
+
+            // Decide what comes next before anything else, so it still happens if the screen or
+            // process is killed mid-ring: a repeating alarm needs its next occurrence lined up (nothing
+            // else schedules it after it fires), and a one-off has done its job and must switch off.
+            val scheduler = AlarmScheduler(this@AlarmService)
+            when (AlarmTimeCalculator.afterRing(alarm.repeatDays)) {
+                AlarmTimeCalculator.AfterRing.RESCHEDULE -> scheduler.schedule(alarm)
+                AlarmTimeCalculator.AfterRing.DISABLE -> {
+                    app.repository.setEnabled(alarm.id, false)
+                    scheduler.cancel(alarm.id)
+                }
+            }
 
             val fullScreenIntent = Intent(this@AlarmService, AlarmRingingActivity::class.java).apply {
                 putExtra(AlarmReceiver.EXTRA_ALARM_ID, alarmId)
