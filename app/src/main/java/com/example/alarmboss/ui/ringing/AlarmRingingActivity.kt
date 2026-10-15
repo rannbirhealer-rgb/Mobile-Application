@@ -33,6 +33,7 @@ import com.example.alarmboss.ui.ringing.tasks.MemoryTaskScreen
 import com.example.alarmboss.ui.ringing.tasks.PatternLockTaskScreen
 import com.example.alarmboss.ui.ringing.tasks.ReadingTaskScreen
 import com.example.alarmboss.ui.ringing.tasks.WordScrambleTaskScreen
+import com.example.alarmboss.ui.common.HoldToConfirmButton
 import com.example.alarmboss.ui.theme.AlarmBossTheme
 
 /**
@@ -72,7 +73,12 @@ class AlarmRingingActivity : ComponentActivity() {
                         }
                 ) {
                     session?.let {
-                        RingingContent(it, onDismiss = ::dismissAlarm, onSnooze = ::snoozeAlarm)
+                        RingingContent(
+                            it,
+                            onDismiss = ::dismissAlarm,
+                            onSnooze = ::snoozeAlarm,
+                            onEmergencyStop = ::emergencyStop
+                        )
                     } ?: LoadingContent()
                 }
             }
@@ -104,6 +110,12 @@ class AlarmRingingActivity : ComponentActivity() {
         AlarmService.stop(this)
         finish()
     }
+
+    private fun emergencyStop() {
+        if (!viewModel.emergencyStop()) return
+        AlarmService.stop(this)
+        finish()
+    }
 }
 
 @Composable
@@ -112,7 +124,44 @@ private fun LoadingContent() {
 }
 
 @Composable
-private fun RingingContent(session: RingSession, onDismiss: () -> Unit, onSnooze: () -> Unit) {
+private fun RingingContent(
+    session: RingSession,
+    onDismiss: () -> Unit,
+    onSnooze: () -> Unit,
+    onEmergencyStop: () -> Unit
+) {
+    Column(Modifier.fillMaxSize()) {
+        Box(Modifier.weight(1f)) { RingingBody(session, onDismiss, onSnooze) }
+        // Easy alarms already have a one-tap Dismiss; every harder mode needs a way out too.
+        if (session.alarm.mode != AlarmMode.EASY) EmergencyStopBar(onEmergencyStop)
+    }
+}
+
+/** A deliberately slow way to end an alarm whose challenge can't be completed. */
+@Composable
+private fun EmergencyStopBar(onConfirmed: () -> Unit) {
+    Column(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(stringResource(R.string.emergency_stop_prompt), style = MaterialTheme.typography.bodySmall)
+        HoldToConfirmButton(
+            label = stringResource(R.string.emergency_stop_hold, EMERGENCY_STOP_SECONDS),
+            holdMillis = EMERGENCY_STOP_SECONDS * 1000L,
+            onConfirmed = onConfirmed
+        )
+        Text(
+            stringResource(R.string.emergency_stop_note),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+private const val EMERGENCY_STOP_SECONDS = 10
+
+@Composable
+private fun RingingBody(session: RingSession, onDismiss: () -> Unit, onSnooze: () -> Unit) {
     val alarm = session.alarm
     val plan = session.plan
 

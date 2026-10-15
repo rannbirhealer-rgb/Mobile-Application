@@ -7,7 +7,8 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -34,6 +35,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.alarmboss.R
 import com.example.alarmboss.data.Alarm
 import com.example.alarmboss.data.isAlarmLocked
+import com.example.alarmboss.ui.common.HoldToConfirmButton
 import com.example.alarmboss.ui.theme.StreakFlameDark
 import com.example.alarmboss.ui.theme.StreakFlameLight
 import java.time.DayOfWeek
@@ -200,6 +202,35 @@ private fun AlarmRow(
         )
     }
 
+    var showEmergencyUnlock by remember { mutableStateOf(false) }
+    if (showEmergencyUnlock) {
+        // The two-hour lock stops you disabling an alarm to dodge it, but a lock with no way out is
+        // unsafe (illness, a mistaken time, a real emergency). So there is one, made deliberately
+        // slow: a long press to find it, then a held button, never a single tap.
+        AlertDialog(
+            onDismissRequest = { showEmergencyUnlock = false },
+            title = { Text(stringResource(R.string.emergency_unlock_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Text(stringResource(R.string.emergency_unlock_body))
+                    HoldToConfirmButton(
+                        label = stringResource(R.string.emergency_unlock_hold, EMERGENCY_UNLOCK_SECONDS),
+                        holdMillis = EMERGENCY_UNLOCK_SECONDS * 1000L,
+                        onConfirmed = {
+                            showEmergencyUnlock = false
+                            onToggle(false)
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showEmergencyUnlock = false }) { Text(stringResource(R.string.action_cancel)) }
+            }
+        )
+    }
+
     // Never delete on the swipe itself: it only asks, and the row springs back meanwhile.
     SwipeToDeleteRow(
         enabled = !isLocked,
@@ -211,18 +242,23 @@ private fun AlarmRow(
             isLocked = isLocked,
             onToggle = onToggle,
             onClick = onClick,
-            onRequestDelete = { showDeleteConfirm = true }
+            onRequestDelete = { showDeleteConfirm = true },
+            onRequestEmergencyUnlock = { showEmergencyUnlock = true }
         )
     }
 }
 
+private const val EMERGENCY_UNLOCK_SECONDS = 5
+
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun AlarmRowContent(
     alarm: Alarm,
     isLocked: Boolean,
     onToggle: (Boolean) -> Unit,
     onClick: () -> Unit,
-    onRequestDelete: () -> Unit
+    onRequestDelete: () -> Unit,
+    onRequestEmergencyUnlock: () -> Unit
 ) {
     Row(
         Modifier
@@ -233,7 +269,10 @@ private fun AlarmRowContent(
                 if (isLocked) Modifier.background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
                 else Modifier
             )
-            .clickable(enabled = !isLocked, onClick = onClick)
+            .combinedClickable(
+                onClick = { if (!isLocked) onClick() },
+                onLongClick = if (isLocked) onRequestEmergencyUnlock else null
+            )
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -247,6 +286,13 @@ private fun AlarmRowContent(
             )
             if (alarm.label.isNotBlank()) Text(alarm.label, style = MaterialTheme.typography.bodyMedium)
             Text(modeSummary(alarm), style = MaterialTheme.typography.bodySmall)
+            if (isLocked) {
+                Text(
+                    stringResource(R.string.alarms_locked_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
             if (alarm.repeatDays.isNotEmpty()) {
                 Text(
                     daysLabel(alarm.repeatDays, LocalConfiguration.current.locales[0]),

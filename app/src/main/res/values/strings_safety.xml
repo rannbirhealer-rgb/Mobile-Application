@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Emergency unlock for a locked alarm -->
+    <string name="alarms_locked_hint">Locked · long-press for emergency off</string>
+    <string name="emergency_unlock_title">Turn off this alarm?</string>
+    <string name="emergency_unlock_body">This alarm is inside its two-hour lock, which is there so you can\'t talk yourself out of waking up. Only turn it off if you truly have to: illness, an emergency, or a mistake.</string>
+    <string name="emergency_unlock_hold">Hold for %1$d seconds to turn off</string>
+
+    <!-- Emergency stop while an alarm rings -->
+    <string name="emergency_stop_prompt">Can\'t complete this?</string>
+    <string name="emergency_stop_hold">Hold for %1$d seconds for an emergency stop</string>
+    <string name="emergency_stop_note">An emergency stop silences the alarm but gives no streak or XP.</string>
+</resources>

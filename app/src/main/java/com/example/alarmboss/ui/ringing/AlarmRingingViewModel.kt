@@ -111,6 +111,18 @@ class AlarmRingingViewModel(application: Application) : AndroidViewModel(applica
         return true
     }
 
+    /**
+     * The safety valve for an alarm whose challenge genuinely can't be completed (illness, injury,
+     * a camera that fails). It ends the ring but deliberately records nothing: no streak, no XP, no
+     * wake event, so it can't be used as a cheaper way to earn credit. Returns false if the ring was
+     * already finished.
+     */
+    fun emergencyStop(): Boolean {
+        if (completed) return false
+        completed = true
+        return true
+    }
+
     /** Only offered in Easy mode: re-fires the alarm after the chosen snooze length. */
     fun snooze() {
         val session = _session.value ?: return
