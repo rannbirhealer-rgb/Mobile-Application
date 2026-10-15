@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.alarmboss.AlarmBossApp
 import com.example.alarmboss.alarm.AlarmScheduler
+import com.example.alarmboss.alarm.FollowUp
 import com.example.alarmboss.data.Alarm
 import com.example.alarmboss.data.AlarmMode
 import com.example.alarmboss.data.StrictExerciseCategory
@@ -13,6 +14,7 @@ import com.example.alarmboss.data.WakeEvent
 import com.example.alarmboss.engine.ProgressionEngine
 import com.example.alarmboss.engine.RingPlan
 import com.example.alarmboss.engine.RingPlanner
+import com.example.alarmboss.util.FollowUpSettings
 import com.example.alarmboss.util.SnoozeSettings
 import com.example.alarmboss.util.StreakManager
 import java.time.LocalDate
@@ -25,7 +27,9 @@ data class RingSession(
     val alarm: Alarm,
     val plan: RingPlan,
     val currentStreak: Int,
-    val snoozeMinutes: Int
+    val snoozeMinutes: Int,
+    /** True when this ring is the post-dismissal "are you really up?" check, not the alarm itself. */
+    val isWakeCheck: Boolean
 )
 
 class AlarmRingingViewModel(application: Application) : AndroidViewModel(application) {
@@ -47,7 +51,7 @@ class AlarmRingingViewModel(application: Application) : AndroidViewModel(applica
     private var completed = false
     private var usedPuzzleAlternative = false
 
-    fun load(id: Long) {
+    fun load(id: Long, isWakeCheck: Boolean = false) {
         viewModelScope.launch {
             val profile = profileRepository.getProfile()
             // Streak including today, fixed now so a dismiss after midnight can't change the plan.
@@ -58,7 +62,8 @@ class AlarmRingingViewModel(application: Application) : AndroidViewModel(applica
                 alarm = alarm,
                 plan = RingPlanner.plan(alarm.mode, profile.level, projectedStreak),
                 currentStreak = streakManager.getCurrentStreak(),
-                snoozeMinutes = snoozeSettings.minutes
+                snoozeMinutes = snoozeSettings.minutes,
+                isWakeCheck = isWakeCheck
             )
         }
     }
@@ -84,8 +89,13 @@ class AlarmRingingViewModel(application: Application) : AndroidViewModel(applica
         if (completed) return false
         completed = true
 
+        // Passing the wake-up check proves the user is still up, but it isn't a wake-up: no streak, no
+        // XP, no event, and it must not queue another check behind itself.
+        if (_session.value?.isWakeCheck == true) return true
+
         val newStreak = streakManager.recordSuccessfulWakeUp()
         val session = _session.value ?: return true
+        scheduleWakeCheckIfEnabled(session.alarm)
         val profile = profileSnapshot ?: return true
 
         val alarm = session.alarm
@@ -120,6 +130,17 @@ class AlarmRingingViewModel(application: Application) : AndroidViewModel(applica
         // App scope, not viewModelScope: the screen finishes right after this and would cancel it.
         app.appScope.launch { profileRepository.recordWakeUp(event, outcome.profile) }
         return true
+    }
+
+    /**
+     * The commonest way a strict alarm fails: you pass the task, then go straight back to sleep. If
+     * the wake-up check is on, ring again shortly after with a quick challenge. Easy alarms are
+     * excluded: their whole contract is a one-tap dismiss.
+     */
+    private fun scheduleWakeCheckIfEnabled(alarm: Alarm) {
+        val settings = FollowUpSettings(app)
+        if (alarm.mode == AlarmMode.EASY || !settings.wakeCheckEnabled) return
+        AlarmScheduler(app).scheduleFollowUp(alarm.id, FollowUp.WAKE_CHECK, settings.wakeCheckMinutes)
     }
 
     /**

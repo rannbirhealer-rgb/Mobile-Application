@@ -16,7 +16,10 @@
     <string name="task_voice_unavailable">Voice recognition isn\'t available on this device.</string>
 
     <!-- Math -->
-    <string name="math_title">Solve %1$d problems to dismiss</string>
+    <plurals name="math_title">
+        <item quantity="one">Solve %1$d problem to dismiss</item>
+        <item quantity="other">Solve %1$d problems to dismiss</item>
+    </plurals>
     <string name="math_toggle_sign_description">Toggle negative sign</string>
 
     <!-- Maze -->

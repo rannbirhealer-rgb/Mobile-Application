@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.alarmboss.data.ContentStore
 import com.example.alarmboss.util.AccessibilitySettings
+import com.example.alarmboss.util.FollowUpSettings
 import com.example.alarmboss.util.SnoozeSettings
 import com.example.alarmboss.util.SoundSettings
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -54,6 +55,14 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _flash = MutableStateFlow(accessibilitySettings.flash)
     val flash: StateFlow<Boolean> = _flash
 
+    private val followUpSettings = FollowUpSettings(application)
+
+    private val _wakeCheckEnabled = MutableStateFlow(followUpSettings.wakeCheckEnabled)
+    val wakeCheckEnabled: StateFlow<Boolean> = _wakeCheckEnabled
+
+    private val _wakeCheckMinutes = MutableStateFlow(followUpSettings.wakeCheckMinutes)
+    val wakeCheckMinutes: StateFlow<Int> = _wakeCheckMinutes
+
     private val _passagesText = MutableStateFlow("")
     val passagesText: StateFlow<String> = _passagesText
 
@@ -97,6 +106,16 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setFlash(enabled: Boolean) {
         accessibilitySettings.flash = enabled
         _flash.value = enabled
+    }
+
+    fun setWakeCheckEnabled(enabled: Boolean) {
+        followUpSettings.wakeCheckEnabled = enabled
+        _wakeCheckEnabled.value = enabled
+    }
+
+    fun setWakeCheckMinutes(minutes: Int) {
+        followUpSettings.wakeCheckMinutes = minutes
+        _wakeCheckMinutes.value = followUpSettings.wakeCheckMinutes
     }
 
     fun onPassagesChange(text: String) { _passagesText.value = text }

@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import com.example.alarmboss.R
 import com.example.alarmboss.alarm.AlarmReceiver
 import com.example.alarmboss.alarm.AlarmService
+import com.example.alarmboss.alarm.FollowUp
 import com.example.alarmboss.data.Alarm
 import com.example.alarmboss.data.AlarmMode
 import com.example.alarmboss.data.MediumTaskType
@@ -56,7 +57,8 @@ class AlarmRingingActivity : ComponentActivity() {
         })
 
         val alarmId = intent.getLongExtra(AlarmReceiver.EXTRA_ALARM_ID, -1L)
-        viewModel.load(alarmId)
+        val isWakeCheck = intent.getStringExtra(AlarmReceiver.EXTRA_FOLLOW_UP) == FollowUp.WAKE_CHECK.name
+        viewModel.load(alarmId, isWakeCheck)
 
         setContent {
             AlarmBossTheme {
@@ -171,6 +173,11 @@ private fun RingingBody(
 ) {
     val alarm = session.alarm
     val plan = session.plan
+
+    if (session.isWakeCheck) {
+        WakeCheckScreen(onSolved = onDismiss)
+        return
+    }
 
     if (plan.isBossFight) {
         BossFightScreen(difficulty = plan.difficulty, onSolved = onDismiss)

@@ -13,6 +13,8 @@ class AlarmReceiver : BroadcastReceiver() {
         val serviceIntent = Intent(context, AlarmService::class.java).apply {
             action = AlarmService.ACTION_START
             putExtra(EXTRA_ALARM_ID, alarmId)
+            // Absent for a normal ring; names the FollowUp kind when this is one.
+            intent.getStringExtra(EXTRA_FOLLOW_UP)?.let { putExtra(EXTRA_FOLLOW_UP, it) }
         }
         ContextCompat.startForegroundService(context, serviceIntent)
     }
@@ -20,5 +22,6 @@ class AlarmReceiver : BroadcastReceiver() {
     companion object {
         const val ACTION_ALARM_TRIGGER = "com.example.alarmboss.ACTION_ALARM_TRIGGER"
         const val EXTRA_ALARM_ID = "extra_alarm_id"
+        const val EXTRA_FOLLOW_UP = "extra_follow_up"
     }
 }

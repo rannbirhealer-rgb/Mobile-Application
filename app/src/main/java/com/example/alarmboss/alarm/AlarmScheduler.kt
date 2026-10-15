@@ -40,18 +40,36 @@ class AlarmScheduler(private val context: Context) {
         }
     }
 
-    fun cancel(alarmId: Long) {
-        alarmManager.cancel(pendingIntentFor(alarmId))
+    /** Rings this alarm again in [minutes] as a [FollowUp], without touching the alarm's own schedule. */
+    fun scheduleFollowUp(alarmId: Long, kind: FollowUp, minutes: Int) {
+        val triggerAtMillis = System.currentTimeMillis() + minutes * 60_000L
+        val pendingIntent = pendingIntentFor(alarmId, kind)
+        if (alarmManager.canScheduleExactAlarms()) {
+            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
+        } else {
+            alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
+        }
     }
 
-    private fun pendingIntentFor(alarmId: Long): PendingIntent {
+    fun cancelFollowUp(alarmId: Long, kind: FollowUp) {
+        alarmManager.cancel(pendingIntentFor(alarmId, kind))
+    }
+
+    /** Cancels the alarm and anything queued behind it, so deleting an alarm can't leave a ghost ring. */
+    fun cancel(alarmId: Long) {
+        alarmManager.cancel(pendingIntentFor(alarmId))
+        FollowUp.values().forEach { cancelFollowUp(alarmId, it) }
+    }
+
+    private fun pendingIntentFor(alarmId: Long, followUp: FollowUp? = null): PendingIntent {
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             action = AlarmReceiver.ACTION_ALARM_TRIGGER
             putExtra(AlarmReceiver.EXTRA_ALARM_ID, alarmId)
+            followUp?.let { putExtra(AlarmReceiver.EXTRA_FOLLOW_UP, it.name) }
         }
         return PendingIntent.getBroadcast(
             context,
-            alarmId.toInt(),
+            alarmId.toInt() + (followUp?.requestOffset ?: 0),
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )

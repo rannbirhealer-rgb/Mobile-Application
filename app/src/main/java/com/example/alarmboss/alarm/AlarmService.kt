@@ -59,31 +59,38 @@ class AlarmService : Service() {
                     stopSelf()
                     return START_NOT_STICKY
                 }
-                startRinging(alarmId)
+                val followUp = intent?.getStringExtra(AlarmReceiver.EXTRA_FOLLOW_UP)
+                    ?.let { name -> FollowUp.values().firstOrNull { it.name == name } }
+                startRinging(alarmId, followUp)
             }
         }
         return START_STICKY
     }
 
-    private fun startRinging(alarmId: Long) {
+    private fun startRinging(alarmId: Long, followUp: FollowUp?) {
         val app = application as AlarmBossApp
         scope.launch {
             val alarm = app.repository.getAlarm(alarmId) ?: return@launch
 
-            // Decide what comes next before anything else, so it still happens if the screen or
-            // process is killed mid-ring: a repeating alarm needs its next occurrence lined up (nothing
-            // else schedules it after it fires), and a one-off has done its job and must switch off.
-            val scheduler = AlarmScheduler(this@AlarmService)
-            when (AlarmTimeCalculator.afterRing(alarm.repeatDays)) {
-                AlarmTimeCalculator.AfterRing.RESCHEDULE -> scheduler.schedule(alarm)
-                AlarmTimeCalculator.AfterRing.DISABLE -> {
-                    app.repository.setEnabled(alarm.id, false)
-                    scheduler.cancel(alarm.id)
+            // A follow-up ring is an extra on top of an alarm whose own schedule was already settled
+            // when it first rang, so only a primary ring decides what comes next.
+            if (followUp == null) {
+                // Decide before anything else, so it still happens if the screen or process is killed
+                // mid-ring: a repeating alarm needs its next occurrence lined up (nothing else schedules
+                // it after it fires), and a one-off has done its job and must switch off.
+                val scheduler = AlarmScheduler(this@AlarmService)
+                when (AlarmTimeCalculator.afterRing(alarm.repeatDays)) {
+                    AlarmTimeCalculator.AfterRing.RESCHEDULE -> scheduler.schedule(alarm)
+                    AlarmTimeCalculator.AfterRing.DISABLE -> {
+                        app.repository.setEnabled(alarm.id, false)
+                        scheduler.cancel(alarm.id)
+                    }
                 }
             }
 
             val fullScreenIntent = Intent(this@AlarmService, AlarmRingingActivity::class.java).apply {
                 putExtra(AlarmReceiver.EXTRA_ALARM_ID, alarmId)
+                followUp?.let { putExtra(AlarmReceiver.EXTRA_FOLLOW_UP, it.name) }
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
             val fullScreenPendingIntent = PendingIntent.getActivity(
@@ -93,7 +100,10 @@ class AlarmService : Service() {
 
             val notification: Notification = NotificationCompat.Builder(this@AlarmService, AlarmBossApp.CHANNEL_ALARM)
                 .setSmallIcon(R.drawable.ic_launcher_foreground)
-                .setContentTitle(alarm.label.ifBlank { getString(R.string.ringing_default_label) })
+                .setContentTitle(
+                    if (followUp == FollowUp.WAKE_CHECK) getString(R.string.wake_check_title)
+                    else alarm.label.ifBlank { getString(R.string.ringing_default_label) }
+                )
                 .setContentText(getString(R.string.notification_tap_to_open))
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setCategory(NotificationCompat.CATEGORY_ALARM)
