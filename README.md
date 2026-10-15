@@ -16,6 +16,41 @@ Every alarm you actually wake up to earns XP, so mornings become a game you can 
 
 ---
 
+## ⏰ Scheduling
+
+- **Repeating alarms keep repeating.** After one rings, the next occurrence is queued straight away; a one-time alarm switches itself off instead of sitting in the list looking active.
+- **Clock and time-zone changes are handled.** Alarms are re-registered after a reboot, a time-zone change, a manual clock change, and whenever the app opens, so 7:00 stays 7:00 local.
+- **Presets and dates.** One-tap Weekdays, Weekends and Every day, or pin an alarm to a single date. A pinned date and a repeat pattern are mutually exclusive, and a moment that has already passed can't be saved.
+- **24-hour clock.** Times follow the system 12/24-hour setting everywhere they appear.
+- **Two-hour lock.** An enabled alarm can't be edited, switched off or deleted once its next real ring is within two hours, so a weekday alarm isn't locked on a Saturday evening.
+
+## 🔊 Sound
+
+- **Loudness** of 25%, 50%, 75% or 100% on the alarm stream, with an optional **gradual fade-in**.
+- **Raise a turned-down phone:** optionally lift the alarm volume to the chosen level for the ring, then put it back afterwards.
+
+## 🛟 Safety nets
+
+- **Emergency exits.** A locked alarm can still be switched off with a long press followed by a held button, and a ringing challenge has a deliberately slow Emergency stop, so the lock and the challenges can never trap someone who is ill or has made a mistake.
+- **Wake-up check (optional).** After a Medium or Strict alarm is completed, it rings again after 5, 10 or 15 minutes with a quick challenge, because the commonest failure is passing the task and going back to sleep.
+- **Backup alarm (optional).** If an alarm isn't completed, it rings again after 5, 10 or 15 minutes. Completing, snoozing or stopping the alarm cancels the backup.
+
+## ♿ Accessibility
+
+- **Puzzle instead of a workout.** A Strict alarm set to a physical exercise offers a mental puzzle in its place for the same reward.
+- **Silent mode.** Vibrates and flashes the camera light instead of playing sound, with an optional flash on top of normal ringing.
+
+## 🏖️ Holidays
+
+Turn on **Holidays** in Settings and the alarm list asks, a week ahead, whether repeating alarms should stay quiet on the next holiday.
+
+- **Nothing is skipped without a yes.** "Skip that day" skips it; "Keep ringing", or closing the dialog, changes nothing. One-time and pinned-date alarms are never skipped, and each holiday is asked about once.
+- **No network access.** Holidays for Worldwide, India, the US and the UK are worked out on the device from fixed dates and weekday rules (including Easter). The app has no internet permission.
+- **Your own days off.** Add festivals that depend on the lunar calendar, such as Diwali or Eid, which no rule can predict.
+- **Can't be used to dodge the lock.** A skip is only offered while the alarm is more than two hours away, and an agreed skip can be cancelled from Settings at any time.
+
+---
+
 ## 🚀 Automated Release Pipeline
 
 This project uses **GitHub Actions** to automatically build and compile the application into a production-ready Android APK whenever a new version tag is published. 
