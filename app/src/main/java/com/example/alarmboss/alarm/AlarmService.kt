@@ -6,10 +6,12 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.media.AudioAttributes
+import android.media.AudioManager
 import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Build
 import android.os.IBinder
+import android.os.SystemClock
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -17,9 +19,15 @@ import androidx.core.app.NotificationCompat
 import com.example.alarmboss.AlarmBossApp
 import com.example.alarmboss.R
 import com.example.alarmboss.engine.AlarmTimeCalculator
+import com.example.alarmboss.engine.VolumeRamp
 import com.example.alarmboss.ui.ringing.AlarmRingingActivity
+import com.example.alarmboss.util.SoundSettings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -31,7 +39,9 @@ class AlarmService : Service() {
 
     private var mediaPlayer: MediaPlayer? = null
     private var vibrator: Vibrator? = null
-    private val scope = CoroutineScope(Dispatchers.Main)
+    private val job = SupervisorJob()
+    private val scope = CoroutineScope(Dispatchers.Main + job)
+    private var rampJob: Job? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
@@ -99,6 +109,11 @@ class AlarmService : Service() {
 
     private fun playSound(soundUri: String?) {
         stopMediaPlayer()
+        val sound = SoundSettings(this)
+        raiseSystemVolumeIfEnabled(sound)
+
+        val target = sound.loudnessPercent / 100f
+        val startVolume = if (sound.gradual) VolumeRamp.volumeAt(0, VolumeRamp.RAMP_MS, target) else target
         try {
             val uri = soundUri?.let { Uri.parse(it) }
                 ?: android.media.RingtoneManager.getActualDefaultRingtoneUri(
@@ -113,13 +128,57 @@ class AlarmService : Service() {
                 )
                 setDataSource(this@AlarmService, uri!!)
                 isLooping = true
+                setVolume(startVolume, startVolume)
                 prepare()
                 start()
             }
+            if (sound.gradual) startVolumeRamp(target)
         } catch (e: Exception) {
             // If the custom sound URI can no longer be resolved (e.g. permission revoked),
             // fall back silently to vibration only so the alarm still wakes the user.
         }
+    }
+
+    /** Fades the player up to [target] over [VolumeRamp.RAMP_MS], ending the loop once it gets there. */
+    private fun startVolumeRamp(target: Float) {
+        rampJob?.cancel()
+        rampJob = scope.launch {
+            val started = SystemClock.elapsedRealtime()
+            while (true) {
+                val volume = VolumeRamp.volumeAt(SystemClock.elapsedRealtime() - started, VolumeRamp.RAMP_MS, target)
+                val player = mediaPlayer ?: break
+                runCatching { player.setVolume(volume, volume) }
+                if (volume >= target) break
+                delay(RAMP_STEP_MS)
+            }
+        }
+    }
+
+    /**
+     * A phone with its alarm volume turned down or muted is the commonest reason an alarm goes
+     * unheard. Lift the system alarm stream for the duration of the ring and remember the original
+     * (persistently) so it can be put back, even if this service is killed before it gets the chance.
+     */
+    private fun raiseSystemVolumeIfEnabled(sound: SoundSettings) {
+        if (!sound.raiseSystemVolume) return
+        runCatching {
+            val audio = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+            if (sound.rememberedSystemVolume == SoundSettings.NONE) {
+                sound.rememberedSystemVolume = audio.getStreamVolume(AudioManager.STREAM_ALARM)
+            }
+            audio.setStreamVolume(AudioManager.STREAM_ALARM, audio.getStreamMaxVolume(AudioManager.STREAM_ALARM), 0)
+        }
+    }
+
+    private fun restoreSystemVolume() {
+        val sound = SoundSettings(this)
+        val remembered = sound.rememberedSystemVolume
+        if (remembered == SoundSettings.NONE) return
+        runCatching {
+            (getSystemService(Context.AUDIO_SERVICE) as AudioManager)
+                .setStreamVolume(AudioManager.STREAM_ALARM, remembered, 0)
+        }
+        sound.rememberedSystemVolume = SoundSettings.NONE
     }
 
     private fun startVibration() {
@@ -134,8 +193,10 @@ class AlarmService : Service() {
     }
 
     fun stopRinging() {
+        rampJob?.cancel()
         stopMediaPlayer()
         vibrator?.cancel()
+        restoreSystemVolume()
     }
 
     private fun stopMediaPlayer() {
@@ -148,6 +209,7 @@ class AlarmService : Service() {
 
     override fun onDestroy() {
         stopRinging()
+        scope.cancel()
         super.onDestroy()
     }
 
@@ -157,6 +219,7 @@ class AlarmService : Service() {
         const val ACTION_START = "com.example.alarmboss.ACTION_START"
         const val ACTION_STOP = "com.example.alarmboss.ACTION_STOP"
         const val NOTIFICATION_ID = 42
+        private const val RAMP_STEP_MS = 250L
 
         fun stop(context: Context) {
             val intent = Intent(context, AlarmService::class.java).apply { action = ACTION_STOP }
