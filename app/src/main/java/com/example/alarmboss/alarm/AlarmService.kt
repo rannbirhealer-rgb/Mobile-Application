@@ -18,9 +18,11 @@ import android.os.VibratorManager
 import androidx.core.app.NotificationCompat
 import com.example.alarmboss.AlarmBossApp
 import com.example.alarmboss.R
+import com.example.alarmboss.engine.AlarmFeedbackPlanner
 import com.example.alarmboss.engine.AlarmTimeCalculator
 import com.example.alarmboss.engine.VolumeRamp
 import com.example.alarmboss.ui.ringing.AlarmRingingActivity
+import com.example.alarmboss.util.AccessibilitySettings
 import com.example.alarmboss.util.SoundSettings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -42,6 +44,7 @@ class AlarmService : Service() {
     private val job = SupervisorJob()
     private val scope = CoroutineScope(Dispatchers.Main + job)
     private var rampJob: Job? = null
+    private val torch by lazy { TorchPulser(this, scope) }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
@@ -102,8 +105,11 @@ class AlarmService : Service() {
             startForeground(NOTIFICATION_ID, notification)
             startActivity(fullScreenIntent)
 
-            playSound(alarm.soundUri)
-            if (alarm.vibrate) startVibration()
+            val accessibility = AccessibilitySettings(this@AlarmService)
+            val feedback = AlarmFeedbackPlanner.plan(alarm.vibrate, accessibility.silentMode)
+            if (feedback.sound) playSound(alarm.soundUri)
+            if (feedback.vibrate) startVibration()
+            if (accessibility.flash) torch.start()
         }
     }
 
@@ -194,6 +200,7 @@ class AlarmService : Service() {
 
     fun stopRinging() {
         rampJob?.cancel()
+        torch.stop()
         stopMediaPlayer()
         vibrator?.cancel()
         restoreSystemVolume()

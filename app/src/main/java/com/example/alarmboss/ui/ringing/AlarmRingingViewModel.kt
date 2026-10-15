@@ -7,6 +7,7 @@ import com.example.alarmboss.AlarmBossApp
 import com.example.alarmboss.alarm.AlarmScheduler
 import com.example.alarmboss.data.Alarm
 import com.example.alarmboss.data.AlarmMode
+import com.example.alarmboss.data.StrictExerciseCategory
 import com.example.alarmboss.data.UserProfile
 import com.example.alarmboss.data.WakeEvent
 import com.example.alarmboss.engine.ProgressionEngine
@@ -44,6 +45,7 @@ class AlarmRingingViewModel(application: Application) : AndroidViewModel(applica
     private val ringStartedAt: Long = System.currentTimeMillis()
     private var firstTouchAt: Long = 0L
     private var completed = false
+    private var usedPuzzleAlternative = false
 
     fun load(id: Long) {
         viewModelScope.launch {
@@ -66,6 +68,14 @@ class AlarmRingingViewModel(application: Application) : AndroidViewModel(applica
     }
 
     /**
+     * The user swapped a Strict workout for puzzles. The wake-up still counts, but is scored as the
+     * mental challenge it actually was, so switching can't earn the larger physical-workout XP.
+     */
+    fun useStrictPuzzleAlternative() {
+        usedPuzzleAlternative = true
+    }
+
+    /**
      * Records a genuine wake-up: the alarm's task (if any) was actually completed, not snoozed
      * away. Returns false if it was already recorded, so a double tap on the final step can't
      * award XP twice.
@@ -80,6 +90,7 @@ class AlarmRingingViewModel(application: Application) : AndroidViewModel(applica
 
         val alarm = session.alarm
         val plan = session.plan
+        val category = if (usedPuzzleAlternative) StrictExerciseCategory.MENTAL else alarm.strictCategory
         val now = System.currentTimeMillis()
         val completionMs = now - ringStartedAt
         val reactionMs = (firstTouchAt.takeIf { it > 0L } ?: now) - ringStartedAt
@@ -87,7 +98,7 @@ class AlarmRingingViewModel(application: Application) : AndroidViewModel(applica
         val outcome = ProgressionEngine.applyWakeUp(
             profile = profile,
             mode = alarm.mode,
-            strictCategory = alarm.strictCategory.takeIf { alarm.mode == AlarmMode.STRICT },
+            strictCategory = category.takeIf { alarm.mode == AlarmMode.STRICT },
             isBossFight = plan.isBossFight,
             newStreak = newStreak,
             reactionMs = reactionMs,
@@ -98,7 +109,7 @@ class AlarmRingingViewModel(application: Application) : AndroidViewModel(applica
             alarmId = alarm.id,
             triggeredAt = ringStartedAt,
             dismissedAt = now,
-            challengeType = RingPlanner.challengeType(alarm.mode, alarm.strictCategory, plan),
+            challengeType = RingPlanner.challengeType(alarm.mode, category, plan),
             difficulty = plan.difficulty,
             xpEarned = outcome.xpEarned,
             reactionTimeMs = reactionMs,

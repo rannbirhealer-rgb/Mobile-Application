@@ -50,7 +50,8 @@ import java.util.concurrent.Executors
 fun StrictExerciseScreen(
     initialExercise: ExerciseType,
     durationSeconds: Int,
-    onComplete: () -> Unit
+    onComplete: () -> Unit,
+    onUsePuzzleInstead: () -> Unit
 ) {
     val context = LocalContext.current
     var exercise by remember { mutableStateOf(initialExercise) }
@@ -122,6 +123,9 @@ fun StrictExerciseScreen(
         OutlinedButton(onClick = {
             exercise = if (exercise == ExerciseType.SQUATS) ExerciseType.JUMPING_JACKS else ExerciseType.SQUATS
         }) { Text(stringResource(R.string.strict_change_exercise)) }
+        // Not everyone can squat or jump (injury, mobility, a small space): offer a text-based
+        // route that works with a screen reader and needs no camera or movement.
+        TextButton(onClick = onUsePuzzleInstead) { Text(stringResource(R.string.strict_puzzle_instead)) }
     }
 }
 

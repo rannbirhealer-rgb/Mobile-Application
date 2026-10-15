@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.alarmboss.data.ContentStore
+import com.example.alarmboss.util.AccessibilitySettings
 import com.example.alarmboss.util.SnoozeSettings
 import com.example.alarmboss.util.SoundSettings
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -45,6 +46,14 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _raiseSystemVolume = MutableStateFlow(soundSettings.raiseSystemVolume)
     val raiseSystemVolume: StateFlow<Boolean> = _raiseSystemVolume
 
+    private val accessibilitySettings = AccessibilitySettings(application)
+
+    private val _silentMode = MutableStateFlow(accessibilitySettings.silentMode)
+    val silentMode: StateFlow<Boolean> = _silentMode
+
+    private val _flash = MutableStateFlow(accessibilitySettings.flash)
+    val flash: StateFlow<Boolean> = _flash
+
     private val _passagesText = MutableStateFlow("")
     val passagesText: StateFlow<String> = _passagesText
 
@@ -78,6 +87,16 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setRaiseSystemVolume(enabled: Boolean) {
         soundSettings.raiseSystemVolume = enabled
         _raiseSystemVolume.value = enabled
+    }
+
+    fun setSilentMode(enabled: Boolean) {
+        accessibilitySettings.silentMode = enabled
+        _silentMode.value = enabled
+    }
+
+    fun setFlash(enabled: Boolean) {
+        accessibilitySettings.flash = enabled
+        _flash.value = enabled
     }
 
     fun onPassagesChange(text: String) { _passagesText.value = text }

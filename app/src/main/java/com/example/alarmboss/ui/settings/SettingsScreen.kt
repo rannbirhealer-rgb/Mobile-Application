@@ -58,6 +58,10 @@ fun SettingsScreen(viewModel: SettingsViewModel = viewModel()) {
 
             HorizontalDivider()
 
+            AccessibilitySection(viewModel)
+
+            HorizontalDivider()
+
             Text(stringResource(R.string.settings_content_title), style = MaterialTheme.typography.titleMedium)
             Text(
                 stringResource(R.string.settings_content_body),

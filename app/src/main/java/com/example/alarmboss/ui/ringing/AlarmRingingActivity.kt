@@ -77,7 +77,8 @@ class AlarmRingingActivity : ComponentActivity() {
                             it,
                             onDismiss = ::dismissAlarm,
                             onSnooze = ::snoozeAlarm,
-                            onEmergencyStop = ::emergencyStop
+                            onEmergencyStop = ::emergencyStop,
+                            onUsePuzzleInstead = viewModel::useStrictPuzzleAlternative
                         )
                     } ?: LoadingContent()
                 }
@@ -128,10 +129,11 @@ private fun RingingContent(
     session: RingSession,
     onDismiss: () -> Unit,
     onSnooze: () -> Unit,
-    onEmergencyStop: () -> Unit
+    onEmergencyStop: () -> Unit,
+    onUsePuzzleInstead: () -> Unit
 ) {
     Column(Modifier.fillMaxSize()) {
-        Box(Modifier.weight(1f)) { RingingBody(session, onDismiss, onSnooze) }
+        Box(Modifier.weight(1f)) { RingingBody(session, onDismiss, onSnooze, onUsePuzzleInstead) }
         // Easy alarms already have a one-tap Dismiss; every harder mode needs a way out too.
         if (session.alarm.mode != AlarmMode.EASY) EmergencyStopBar(onEmergencyStop)
     }
@@ -161,7 +163,12 @@ private fun EmergencyStopBar(onConfirmed: () -> Unit) {
 private const val EMERGENCY_STOP_SECONDS = 10
 
 @Composable
-private fun RingingBody(session: RingSession, onDismiss: () -> Unit, onSnooze: () -> Unit) {
+private fun RingingBody(
+    session: RingSession,
+    onDismiss: () -> Unit,
+    onSnooze: () -> Unit,
+    onUsePuzzleInstead: () -> Unit
+) {
     val alarm = session.alarm
     val plan = session.plan
 
@@ -205,11 +212,20 @@ private fun RingingBody(session: RingSession, onDismiss: () -> Unit, onSnooze: (
                         MentalExerciseType.MAZE -> MazeTaskScreen(difficulty = plan.difficulty, onSolved = onDismiss)
                     }
                 } else {
-                    StrictExerciseScreen(
-                        initialExercise = alarm.exerciseType,
-                        durationSeconds = alarm.exerciseDurationSeconds,
-                        onComplete = onDismiss
-                    )
+                    var puzzleInstead by remember(alarm.id) { mutableStateOf(false) }
+                    if (puzzleInstead) {
+                        MathTaskScreen(difficulty = plan.difficulty, onSolved = onDismiss)
+                    } else {
+                        StrictExerciseScreen(
+                            initialExercise = alarm.exerciseType,
+                            durationSeconds = alarm.exerciseDurationSeconds,
+                            onComplete = onDismiss,
+                            onUsePuzzleInstead = {
+                                onUsePuzzleInstead()
+                                puzzleInstead = true
+                            }
+                        )
+                    }
                 }
             }
         }
