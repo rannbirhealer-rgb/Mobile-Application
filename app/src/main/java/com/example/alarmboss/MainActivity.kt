@@ -29,6 +29,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.alarmboss.alarm.AlarmRescheduler
 import com.example.alarmboss.ui.alarms.AlarmEditScreen
 import com.example.alarmboss.ui.alarms.AlarmListScreen
 import com.example.alarmboss.ui.settings.SettingsScreen
@@ -55,6 +56,13 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Self-heal: make sure every enabled alarm is actually registered with the system. Covers
+        // alarms that arrived without being scheduled (a restored backup) or were lost somehow.
+        // Done here, not in Application.onCreate: an alarm firing starts the process too, and
+        // rescheduling then would race the ring handler.
+        val app = application as AlarmBossApp
+        app.appScope.launch { AlarmRescheduler(applicationContext, app.repository).rescheduleAll() }
 
         setContent {
             AlarmBossTheme {
