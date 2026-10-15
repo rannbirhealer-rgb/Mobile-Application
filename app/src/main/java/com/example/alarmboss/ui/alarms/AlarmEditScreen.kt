@@ -23,6 +23,9 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.alarmboss.R
 import com.example.alarmboss.data.*
+import com.example.alarmboss.engine.AlarmTimeCalculator
+import java.time.LocalDate
+import java.time.LocalDateTime
 import com.example.alarmboss.util.formatTime
 import java.time.DayOfWeek
 import java.time.format.TextStyle
@@ -71,6 +74,11 @@ private fun AlarmEditForm(
     var label by rememberSaveable(base) { mutableStateOf(base?.label ?: "") }
     var mode by rememberSaveable(base) { mutableStateOf(base?.mode ?: AlarmMode.EASY) }
     var days by rememberSaveable(base) { mutableStateOf(base?.repeatDays ?: emptySet()) }
+    // Kept as an ISO string so it fits the saved-state bundle; mutually exclusive with `days`.
+    var specificDateIso by rememberSaveable(base) { mutableStateOf(base?.specificDate) }
+    val specificDate = specificDateIso?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+    val dateHasPassed = specificDate != null &&
+        AlarmTimeCalculator.nextTrigger(hour, minute, emptySet(), LocalDateTime.now(), specificDate) == null
     var soundUri by rememberSaveable(base) { mutableStateOf(base?.soundUri) }
     var vibrate by rememberSaveable(base) { mutableStateOf(base?.vibrate ?: true) }
     var enabledTasks by rememberSaveable(base) { mutableStateOf(base?.enabledMediumTasks ?: MediumTaskType.values().toSet()) }
@@ -91,7 +99,9 @@ private fun AlarmEditForm(
                 id = base?.id ?: 0L,
                 hour = hour, minute = minute, label = label,
                 isEnabled = base?.isEnabled ?: true,
-                repeatDays = days, mode = mode, soundUri = soundUri,
+                repeatDays = if (specificDate != null) emptySet() else days,
+                specificDate = specificDate?.toString(),
+                mode = mode, soundUri = soundUri,
                 vibrate = vibrate, enabledMediumTasks = enabledTasks,
                 exerciseDurationSeconds = exerciseSeconds.toInt(),
                 exerciseType = exerciseType,
@@ -147,7 +157,10 @@ private fun AlarmEditForm(
                     }
                 },
                 actions = {
-                    TextButton(onClick = ::onSaveClicked) { Text(stringResource(R.string.action_save)) }
+                    // Saving a pinned moment that has already gone would create an alarm that never rings.
+                    TextButton(onClick = ::onSaveClicked, enabled = !dateHasPassed) {
+                        Text(stringResource(R.string.action_save))
+                    }
                 }
             )
         }
@@ -173,7 +186,26 @@ private fun AlarmEditForm(
             )
 
             Text(stringResource(R.string.edit_repeat), style = MaterialTheme.typography.titleSmall)
-            DaySelector(selected = days, onChange = { days = it })
+            DaySelector(
+                selected = days,
+                onChange = {
+                    days = it
+                    if (it.isNotEmpty()) specificDateIso = null
+                }
+            )
+            RepeatExtras(
+                days = days,
+                specificDate = specificDate,
+                dateHasPassed = dateHasPassed,
+                onDaysChange = {
+                    days = it
+                    specificDateIso = null
+                },
+                onDateChange = { picked ->
+                    specificDateIso = picked?.toString()
+                    if (picked != null) days = emptySet()
+                }
+            )
 
             Text(stringResource(R.string.edit_mode), style = MaterialTheme.typography.titleSmall)
             SingleChoiceSegmentedButtonRow {

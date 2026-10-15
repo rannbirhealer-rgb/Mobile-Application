@@ -1,8 +1,10 @@
 package com.example.alarmboss.engine
 
 import com.example.alarmboss.engine.AlarmTimeCalculator.AfterRing
+import java.time.LocalDate
 import java.time.LocalDateTime
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class AlarmTimeCalculatorTest {
@@ -77,6 +79,28 @@ class AlarmTimeCalculatorTest {
             LocalDateTime.of(2026, 10, 16, 7, 0),
             AlarmTimeCalculator.nextTrigger(7, 0, setOf(0, 9), now)
         )
+    }
+
+    @Test
+    fun `an alarm pinned to a future date rings at exactly that date and time`() {
+        assertEquals(
+            LocalDateTime.of(2026, 11, 2, 6, 15),
+            AlarmTimeCalculator.nextTrigger(6, 15, emptySet(), now, LocalDate.of(2026, 11, 2))
+        )
+    }
+
+    @Test
+    fun `an alarm pinned to today still rings if its time is ahead`() {
+        assertEquals(
+            LocalDateTime.of(2026, 10, 15, 9, 0),
+            AlarmTimeCalculator.nextTrigger(9, 0, emptySet(), now, LocalDate.of(2026, 10, 15))
+        )
+    }
+
+    @Test
+    fun `an alarm pinned to a moment that has passed has no next occurrence`() {
+        assertNull(AlarmTimeCalculator.nextTrigger(7, 0, emptySet(), now, LocalDate.of(2026, 10, 15)))
+        assertNull(AlarmTimeCalculator.nextTrigger(7, 0, emptySet(), now, LocalDate.of(2026, 10, 1)))
     }
 
     @Test

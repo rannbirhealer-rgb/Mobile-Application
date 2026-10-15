@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import com.example.alarmboss.data.Alarm
+import com.example.alarmboss.data.specificLocalDate
 import com.example.alarmboss.engine.AlarmTimeCalculator
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -15,7 +16,8 @@ class AlarmScheduler(private val context: Context) {
 
     fun schedule(alarm: Alarm) {
         if (!alarm.isEnabled) return
-        val triggerAtMillis = nextTriggerTime(alarm)
+        // A pinned-date alarm whose moment has passed has nothing left to ring for.
+        val triggerAtMillis = nextTriggerTime(alarm) ?: return
         val pendingIntent = pendingIntentFor(alarm.id)
 
         if (alarmManager.canScheduleExactAlarms()) {
@@ -76,7 +78,8 @@ class AlarmScheduler(private val context: Context) {
     }
 
     /** The next epoch-millis trigger time, honoring repeatDays if set. */
-    private fun nextTriggerTime(alarm: Alarm): Long =
-        AlarmTimeCalculator.nextTrigger(alarm.hour, alarm.minute, alarm.repeatDays, LocalDateTime.now())
-            .atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+    private fun nextTriggerTime(alarm: Alarm): Long? =
+        AlarmTimeCalculator.nextTrigger(
+            alarm.hour, alarm.minute, alarm.repeatDays, LocalDateTime.now(), alarm.specificLocalDate()
+        )?.atZone(ZoneId.systemDefault())?.toInstant()?.toEpochMilli()
 }

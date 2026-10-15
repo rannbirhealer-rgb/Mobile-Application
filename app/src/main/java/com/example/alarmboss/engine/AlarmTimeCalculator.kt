@@ -1,5 +1,6 @@
 package com.example.alarmboss.engine
 
+import java.time.LocalDate
 import java.time.LocalDateTime
 
 object AlarmTimeCalculator {
@@ -18,8 +19,22 @@ object AlarmTimeCalculator {
      * The next moment an alarm should ring, strictly after [now]. [repeatDays] holds ISO weekday
      * numbers (1 = Monday .. 7 = Sunday); empty means a one-off, which rings today if its time is
      * still ahead and tomorrow otherwise.
+     *
+     * An alarm pinned to a [specificDate] rings once, at that date and time, and returns null once
+     * that moment has passed: there is no "next" occurrence to wait for.
      */
-    fun nextTrigger(hour: Int, minute: Int, repeatDays: Set<Int>, now: LocalDateTime): LocalDateTime {
+    fun nextTrigger(
+        hour: Int,
+        minute: Int,
+        repeatDays: Set<Int>,
+        now: LocalDateTime,
+        specificDate: LocalDate? = null
+    ): LocalDateTime? {
+        if (specificDate != null) {
+            val moment = specificDate.atTime(hour, minute)
+            return if (moment.isAfter(now)) moment else null
+        }
+
         val today = now.withHour(hour).withMinute(minute).withSecond(0).withNano(0)
 
         if (repeatDays.isEmpty()) {

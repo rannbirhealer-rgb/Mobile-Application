@@ -38,7 +38,10 @@ import com.example.alarmboss.data.isAlarmLocked
 import com.example.alarmboss.ui.common.HoldToConfirmButton
 import com.example.alarmboss.ui.theme.StreakFlameDark
 import com.example.alarmboss.ui.theme.StreakFlameLight
+import com.example.alarmboss.data.specificLocalDate
 import java.time.DayOfWeek
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import java.time.format.TextStyle
 import java.util.Locale
 
@@ -180,7 +183,7 @@ private fun AlarmRow(
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isLocked = isAlarmLocked(alarm.hour, alarm.minute, alarm.isEnabled)
+    val isLocked = isAlarmLocked(alarm)
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
     if (showDeleteConfirm) {
@@ -293,9 +296,13 @@ private fun AlarmRowContent(
                     color = MaterialTheme.colorScheme.error
                 )
             }
+            val locale = LocalConfiguration.current.locales[0]
             if (alarm.repeatDays.isNotEmpty()) {
+                Text(daysLabel(alarm.repeatDays, locale), style = MaterialTheme.typography.bodySmall)
+            }
+            alarm.specificLocalDate()?.let { date ->
                 Text(
-                    daysLabel(alarm.repeatDays, LocalConfiguration.current.locales[0]),
+                    date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale)),
                     style = MaterialTheme.typography.bodySmall
                 )
             }

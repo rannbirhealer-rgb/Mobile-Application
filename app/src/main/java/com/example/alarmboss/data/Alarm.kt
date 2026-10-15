@@ -2,7 +2,11 @@ package com.example.alarmboss.data
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import java.util.Calendar
+import com.example.alarmboss.engine.AlarmTimeCalculator
+import java.time.Duration
+import java.time.LocalDate
+import java.time.LocalDateTime
+
 enum class AlarmMode { EASY, MEDIUM, STRICT }
 
 enum class MediumTaskType { MATH, READING, LYRICS, BARCODE, PATTERN_LOCK, WORD_SCRAMBLE }
@@ -31,30 +35,28 @@ data class Alarm @JvmOverloads constructor(
 
     // Add these fields referenced in AlarmRingingActivity
     val strictCategory: StrictExerciseCategory = StrictExerciseCategory.PHYSICAL,
-    val mentalExerciseType: MentalExerciseType = MentalExerciseType.MEMORY_GRID
+    val mentalExerciseType: MentalExerciseType = MentalExerciseType.MEMORY_GRID,
+
+    /** ISO date (yyyy-MM-dd) for an alarm that rings once on that day; null for ordinary alarms. */
+    val specificDate: String? = null
 )
 
-fun isAlarmLocked(
-    alarmHour: Int,
-    alarmMinute: Int,
-    isEnabled: Boolean,
-    now: Calendar = Calendar.getInstance()
-): Boolean {
-    if (!isEnabled) return false
+/** [Alarm.specificDate] as a date, or null if absent or unreadable. */
+fun Alarm.specificLocalDate(): LocalDate? =
+    specificDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
 
-    val alarmTime = (now.clone() as Calendar).apply {
-        set(Calendar.HOUR_OF_DAY, alarmHour)
-        set(Calendar.MINUTE, alarmMinute)
-        set(Calendar.SECOND, 0)
-    }
-
-    // If the alarm time has already passed today, it means it's set for tomorrow
-    if (alarmTime.before(now)) {
-        alarmTime.add(Calendar.DAY_OF_YEAR, 1)
-    }
-
-    val timeDifferenceMillis = alarmTime.timeInMillis - now.timeInMillis
-    val twoHoursInMillis = 2 * 60 * 60 * 1000
-
-    return timeDifferenceMillis in 0..twoHoursInMillis
+/**
+ * An enabled alarm is locked (cannot be edited, switched off or deleted) once its next ring is
+ * within two hours: the anti-cheat commitment that stops you talking yourself out of it. "Next ring"
+ * is the alarm's real next occurrence, not just its time of day, so a weekday alarm isn't locked on
+ * a Saturday evening and an alarm set for next month isn't locked every night.
+ */
+fun isAlarmLocked(alarm: Alarm, now: LocalDateTime = LocalDateTime.now()): Boolean {
+    if (!alarm.isEnabled) return false
+    val next = AlarmTimeCalculator.nextTrigger(
+        alarm.hour, alarm.minute, alarm.repeatDays, now, alarm.specificLocalDate()
+    ) ?: return false
+    return !Duration.between(now, next).isNegative && Duration.between(now, next) <= LOCK_WINDOW
 }
+
+private val LOCK_WINDOW: Duration = Duration.ofHours(2)

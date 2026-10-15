@@ -1,49 +1,78 @@
 package com.example.alarmboss.data
 
-import java.util.Calendar
+import java.time.LocalDate
+import java.time.LocalDateTime
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AlarmLockTest {
 
-    private fun at(hour: Int, minute: Int): Calendar =
-        Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, hour)
-            set(Calendar.MINUTE, minute)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
+    // Thursday 15 October 2026.
+    private fun at(hour: Int, minute: Int) = LocalDateTime.of(2026, 10, 15, hour, minute)
+
+    private fun alarm(
+        hour: Int,
+        minute: Int,
+        enabled: Boolean = true,
+        repeatDays: Set<Int> = emptySet(),
+        specificDate: String? = null
+    ) = Alarm(hour = hour, minute = minute, isEnabled = enabled, repeatDays = repeatDays, specificDate = specificDate)
 
     @Test
     fun `disabled alarms are never locked`() {
-        assertFalse(isAlarmLocked(7, 0, isEnabled = false, now = at(6, 0)))
+        assertFalse(isAlarmLocked(alarm(7, 0, enabled = false), at(6, 0)))
     }
 
     @Test
     fun `alarm one hour away is locked`() {
-        assertTrue(isAlarmLocked(7, 0, isEnabled = true, now = at(6, 0)))
+        assertTrue(isAlarmLocked(alarm(7, 0), at(6, 0)))
     }
 
     @Test
     fun `alarm three hours away is not locked`() {
-        assertFalse(isAlarmLocked(9, 0, isEnabled = true, now = at(6, 0)))
+        assertFalse(isAlarmLocked(alarm(9, 0), at(6, 0)))
     }
 
     @Test
     fun `alarm exactly at the two hour boundary is locked`() {
-        assertTrue(isAlarmLocked(8, 0, isEnabled = true, now = at(6, 0)))
+        assertTrue(isAlarmLocked(alarm(8, 0), at(6, 0)))
     }
 
     @Test
     fun `alarm time already passed today is treated as tomorrow and not locked`() {
-        // 7:00 AM has already passed by 8:00 PM, so it rolls to tomorrow, well outside the window.
-        assertFalse(isAlarmLocked(7, 0, isEnabled = true, now = at(20, 0)))
+        assertFalse(isAlarmLocked(alarm(7, 0), at(20, 0)))
     }
 
     @Test
     fun `alarm just under two hours from firing tomorrow is locked`() {
-        // 1:00 AM has passed by 11:15 PM, so it's locked for the 1:00 AM tomorrow occurrence.
-        assertTrue(isAlarmLocked(1, 0, isEnabled = true, now = at(23, 15)))
+        assertTrue(isAlarmLocked(alarm(1, 0), at(23, 15)))
+    }
+
+    @Test
+    fun `a weekday alarm is not locked on a Friday night when its next ring is Monday`() {
+        val friday = LocalDateTime.of(2026, 10, 16, 23, 0)
+        assertFalse(isAlarmLocked(alarm(0, 30, repeatDays = setOf(1, 2, 3, 4, 5)), friday))
+    }
+
+    @Test
+    fun `a weekday alarm is locked on the night before a weekday`() {
+        val thursdayNight = LocalDateTime.of(2026, 10, 15, 23, 30)
+        assertTrue(isAlarmLocked(alarm(0, 30, repeatDays = setOf(1, 2, 3, 4, 5)), thursdayNight))
+    }
+
+    @Test
+    fun `an alarm set for a date weeks away is not locked at its time of day`() {
+        assertFalse(isAlarmLocked(alarm(7, 0, specificDate = "2026-11-20"), at(6, 0)))
+    }
+
+    @Test
+    fun `an alarm set for today is locked within two hours of its time`() {
+        assertTrue(isAlarmLocked(alarm(7, 0, specificDate = LocalDate.of(2026, 10, 15).toString()), at(6, 0)))
+    }
+
+    @Test
+    fun `an alarm whose date has passed is not locked`() {
+        assertFalse(isAlarmLocked(alarm(7, 0, specificDate = "2026-10-01"), at(6, 0)))
     }
 }
