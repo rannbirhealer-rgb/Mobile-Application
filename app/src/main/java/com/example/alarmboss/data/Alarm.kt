@@ -51,12 +51,17 @@ fun Alarm.specificLocalDate(): LocalDate? =
  * is the alarm's real next occurrence, not just its time of day, so a weekday alarm isn't locked on
  * a Saturday evening and an alarm set for next month isn't locked every night.
  */
-fun isAlarmLocked(alarm: Alarm, now: LocalDateTime = LocalDateTime.now()): Boolean {
+fun isAlarmLocked(
+    alarm: Alarm,
+    now: LocalDateTime = LocalDateTime.now(),
+    skipDates: Set<LocalDate> = emptySet()
+): Boolean {
     if (!alarm.isEnabled) return false
     val next = AlarmTimeCalculator.nextTrigger(
-        alarm.hour, alarm.minute, alarm.repeatDays, now, alarm.specificLocalDate()
+        alarm.hour, alarm.minute, alarm.repeatDays, now, alarm.specificLocalDate(), skipDates
     ) ?: return false
     return !Duration.between(now, next).isNegative && Duration.between(now, next) <= LOCK_WINDOW
 }
 
-private val LOCK_WINDOW: Duration = Duration.ofHours(2)
+/** How close to ringing an alarm must be before it is locked against changes. */
+val LOCK_WINDOW: Duration = Duration.ofHours(2)

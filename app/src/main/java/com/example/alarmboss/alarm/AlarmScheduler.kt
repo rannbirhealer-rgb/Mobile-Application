@@ -7,12 +7,14 @@ import android.content.Intent
 import com.example.alarmboss.data.Alarm
 import com.example.alarmboss.data.specificLocalDate
 import com.example.alarmboss.engine.AlarmTimeCalculator
+import com.example.alarmboss.util.HolidaySettings
 import java.time.LocalDateTime
 import java.time.ZoneId
 
 class AlarmScheduler(private val context: Context) {
 
     private val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+    private val holidaySettings = HolidaySettings(context)
 
     fun schedule(alarm: Alarm) {
         if (!alarm.isEnabled) return
@@ -80,6 +82,7 @@ class AlarmScheduler(private val context: Context) {
     /** The next epoch-millis trigger time, honoring repeatDays if set. */
     private fun nextTriggerTime(alarm: Alarm): Long? =
         AlarmTimeCalculator.nextTrigger(
-            alarm.hour, alarm.minute, alarm.repeatDays, LocalDateTime.now(), alarm.specificLocalDate()
+            alarm.hour, alarm.minute, alarm.repeatDays, LocalDateTime.now(), alarm.specificLocalDate(),
+            holidaySettings.activeSkipDates
         )?.atZone(ZoneId.systemDefault())?.toInstant()?.toEpochMilli()
 }
