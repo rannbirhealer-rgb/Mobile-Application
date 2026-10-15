@@ -10,4 +10,7 @@
     <string name="settings_wake_check_body">After you finish a Medium or Strict alarm, ring again with a quick sum, so passing the task and falling back asleep doesn\'t work.</string>
     <string name="settings_wake_check_delay">Check after</string>
     <string name="settings_minutes_option">%1$d min</string>
+    <string name="settings_backup_title">Backup alarm</string>
+    <string name="settings_backup_body">If you haven\'t completed an alarm after this long, it rings again. A safety net for a ring you missed or silenced by mistake.</string>
+    <string name="settings_backup_off">Off</string>
 </resources>

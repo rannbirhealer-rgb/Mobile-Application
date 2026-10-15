@@ -22,6 +22,7 @@ import com.example.alarmboss.util.FollowUpSettings
 fun FollowUpSection(viewModel: SettingsViewModel) {
     val wakeCheck by viewModel.wakeCheckEnabled.collectAsState()
     val wakeCheckMinutes by viewModel.wakeCheckMinutes.collectAsState()
+    val backupMinutes by viewModel.backupMinutes.collectAsState()
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(stringResource(R.string.settings_followup_title), style = MaterialTheme.typography.titleMedium)
@@ -45,6 +46,26 @@ fun FollowUpSection(viewModel: SettingsViewModel) {
                         label = { Text(stringResource(R.string.settings_minutes_option, option)) }
                     )
                 }
+            }
+        }
+
+        Text(stringResource(R.string.settings_backup_title), style = MaterialTheme.typography.titleSmall)
+        Text(stringResource(R.string.settings_backup_body), style = MaterialTheme.typography.bodySmall)
+        Row(
+            Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            FollowUpSettings.BACKUP_OPTIONS.forEach { option ->
+                FilterChip(
+                    selected = backupMinutes == option,
+                    onClick = { viewModel.setBackupMinutes(option) },
+                    label = {
+                        Text(
+                            if (option == 0) stringResource(R.string.settings_backup_off)
+                            else stringResource(R.string.settings_minutes_option, option)
+                        )
+                    }
+                )
             }
         }
     }

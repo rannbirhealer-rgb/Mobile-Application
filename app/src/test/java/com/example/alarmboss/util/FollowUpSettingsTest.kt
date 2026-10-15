@@ -21,6 +21,19 @@ class FollowUpSettingsTest {
     }
 
     @Test
+    fun `every offered backup delay is kept, including off`() {
+        FollowUpSettings.BACKUP_OPTIONS.forEach { assertEquals(it, FollowUpSettings.sanitizeBackupMinutes(it)) }
+        assertTrue(0 in FollowUpSettings.BACKUP_OPTIONS)
+    }
+
+    @Test
+    fun `an unknown backup delay turns the backup off rather than guessing`() {
+        assertEquals(0, FollowUpSettings.sanitizeBackupMinutes(7))
+        assertEquals(0, FollowUpSettings.sanitizeBackupMinutes(-5))
+        assertEquals(0, FollowUpSettings.sanitizeBackupMinutes(600))
+    }
+
+    @Test
     fun `the default delay is one of the options`() {
         assertTrue(FollowUpSettings.DEFAULT_WAKE_CHECK_MINUTES in FollowUpSettings.WAKE_CHECK_OPTIONS)
     }

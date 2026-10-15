@@ -18,11 +18,20 @@ class FollowUpSettings(context: Context) {
         get() = sanitizeWakeCheckMinutes(prefs.getInt(KEY_WAKE_CHECK_MINUTES, DEFAULT_WAKE_CHECK_MINUTES))
         set(value) { prefs.edit().putInt(KEY_WAKE_CHECK_MINUTES, sanitizeWakeCheckMinutes(value)).apply() }
 
+    /** Minutes until an uncompleted alarm rings again as a safety net; 0 means off. */
+    var backupMinutes: Int
+        get() = sanitizeBackupMinutes(prefs.getInt(KEY_BACKUP_MINUTES, 0))
+        set(value) { prefs.edit().putInt(KEY_BACKUP_MINUTES, sanitizeBackupMinutes(value)).apply() }
+
     companion object {
+        private const val KEY_BACKUP_MINUTES = "follow_up_backup_minutes"
         private const val KEY_WAKE_CHECK = "follow_up_wake_check"
         private const val KEY_WAKE_CHECK_MINUTES = "follow_up_wake_check_minutes"
         const val DEFAULT_WAKE_CHECK_MINUTES = 10
         val WAKE_CHECK_OPTIONS = listOf(5, 10, 15)
+        val BACKUP_OPTIONS = listOf(0, 5, 10, 15)
+
+        fun sanitizeBackupMinutes(value: Int): Int = if (value in BACKUP_OPTIONS) value else 0
 
         fun sanitizeWakeCheckMinutes(value: Int): Int =
             if (value in WAKE_CHECK_OPTIONS) value else DEFAULT_WAKE_CHECK_MINUTES

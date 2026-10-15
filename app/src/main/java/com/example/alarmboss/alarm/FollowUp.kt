@@ -7,5 +7,12 @@ package com.example.alarmboss.alarm
  */
 enum class FollowUp(val requestOffset: Int) {
     /** A short "are you really up?" challenge a few minutes after the user finished the alarm. */
-    WAKE_CHECK(1_000_000)
+    WAKE_CHECK(1_000_000),
+
+    /**
+     * A safety net: rings again if the alarm still hasn't been completed after a set time, for a ring
+     * that was missed, silenced by mistake, or lost when the screen or service was killed. Cancelled
+     * the moment the user finishes, snoozes or emergency-stops.
+     */
+    BACKUP(2_000_000)
 }

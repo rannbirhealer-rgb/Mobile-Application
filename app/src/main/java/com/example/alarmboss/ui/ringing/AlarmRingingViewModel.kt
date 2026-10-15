@@ -88,6 +88,7 @@ class AlarmRingingViewModel(application: Application) : AndroidViewModel(applica
     fun completeWakeUp(): Boolean {
         if (completed) return false
         completed = true
+        cancelBackup()
 
         // Passing the wake-up check proves the user is still up, but it isn't a wake-up: no streak, no
         // XP, no event, and it must not queue another check behind itself.
@@ -152,12 +153,21 @@ class AlarmRingingViewModel(application: Application) : AndroidViewModel(applica
     fun emergencyStop(): Boolean {
         if (completed) return false
         completed = true
+        cancelBackup()
         return true
     }
 
     /** Only offered in Easy mode: re-fires the alarm after the chosen snooze length. */
     fun snooze() {
         val session = _session.value ?: return
+        // The snooze is itself the next ring; a backup on top of it would ring twice.
+        cancelBackup()
         AlarmScheduler(app).scheduleOneOffInMinutes(session.alarm, session.snoozeMinutes)
+    }
+
+    /** The ring is being ended on purpose, so the safety-net ring behind it is no longer needed. */
+    private fun cancelBackup() {
+        val alarm = _session.value?.alarm ?: return
+        AlarmScheduler(app).cancelFollowUp(alarm.id, FollowUp.BACKUP)
     }
 }

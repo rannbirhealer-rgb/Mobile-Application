@@ -63,6 +63,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _wakeCheckMinutes = MutableStateFlow(followUpSettings.wakeCheckMinutes)
     val wakeCheckMinutes: StateFlow<Int> = _wakeCheckMinutes
 
+    private val _backupMinutes = MutableStateFlow(followUpSettings.backupMinutes)
+    val backupMinutes: StateFlow<Int> = _backupMinutes
+
     private val _passagesText = MutableStateFlow("")
     val passagesText: StateFlow<String> = _passagesText
 
@@ -116,6 +119,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setWakeCheckMinutes(minutes: Int) {
         followUpSettings.wakeCheckMinutes = minutes
         _wakeCheckMinutes.value = followUpSettings.wakeCheckMinutes
+    }
+
+    fun setBackupMinutes(minutes: Int) {
+        followUpSettings.backupMinutes = minutes
+        _backupMinutes.value = followUpSettings.backupMinutes
     }
 
     fun onPassagesChange(text: String) { _passagesText.value = text }

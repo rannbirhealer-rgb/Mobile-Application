@@ -23,6 +23,7 @@ import com.example.alarmboss.engine.AlarmTimeCalculator
 import com.example.alarmboss.engine.VolumeRamp
 import com.example.alarmboss.ui.ringing.AlarmRingingActivity
 import com.example.alarmboss.util.AccessibilitySettings
+import com.example.alarmboss.util.FollowUpSettings
 import com.example.alarmboss.util.SoundSettings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -86,6 +87,10 @@ class AlarmService : Service() {
                         scheduler.cancel(alarm.id)
                     }
                 }
+
+                // Safety net: if this ring isn't completed in time, ring again. Cancelled on completion.
+                val backupMinutes = FollowUpSettings(this@AlarmService).backupMinutes
+                if (backupMinutes > 0) scheduler.scheduleFollowUp(alarm.id, FollowUp.BACKUP, backupMinutes)
             }
 
             val fullScreenIntent = Intent(this@AlarmService, AlarmRingingActivity::class.java).apply {
