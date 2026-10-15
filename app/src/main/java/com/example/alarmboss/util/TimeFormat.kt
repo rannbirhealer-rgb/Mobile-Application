@@ -12,3 +12,7 @@ fun formatTime12h(hour: Int, minute: Int): String {
     }
     return String.format(Locale.getDefault(), "%d:%02d %s", displayHour, minute, period)
 }
+
+/** Formats an alarm time to match the user's clock preference: "07:05" on a 24-hour clock, "7:05 AM" otherwise. */
+fun formatTime(hour: Int, minute: Int, is24Hour: Boolean): String =
+    if (is24Hour) String.format(Locale.getDefault(), "%02d:%02d", hour, minute) else formatTime12h(hour, minute)

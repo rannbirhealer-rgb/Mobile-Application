@@ -23,7 +23,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.alarmboss.R
 import com.example.alarmboss.data.*
-import com.example.alarmboss.util.formatTime12h
+import com.example.alarmboss.util.formatTime
 import java.time.DayOfWeek
 import java.time.format.TextStyle
 
@@ -61,6 +61,7 @@ private fun AlarmEditForm(
     viewModel: AlarmViewModel
 ) {
     val context = LocalContext.current
+    val is24Hour = rememberIs24Hour()
 
     // Form state survives rotation (rememberSaveable) and is keyed on the alarm being edited.
     // Plain mutableStateOf, not the primitive variants, so every value is something Compose can
@@ -160,9 +161,9 @@ private fun AlarmEditForm(
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             OutlinedButton(onClick = {
-                TimePickerDialog(context, { _, h, m -> hour = h; minute = m }, hour, minute, false).show()
+                TimePickerDialog(context, { _, h, m -> hour = h; minute = m }, hour, minute, is24Hour).show()
             }) {
-                Text(stringResource(R.string.edit_time, formatTime12h(hour, minute)))
+                Text(stringResource(R.string.edit_time, formatTime(hour, minute, is24Hour)))
             }
 
             OutlinedTextField(

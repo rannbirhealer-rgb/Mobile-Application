@@ -36,7 +36,6 @@ import com.example.alarmboss.data.Alarm
 import com.example.alarmboss.data.isAlarmLocked
 import com.example.alarmboss.ui.theme.StreakFlameDark
 import com.example.alarmboss.ui.theme.StreakFlameLight
-import com.example.alarmboss.util.formatTime12h
 import java.time.DayOfWeek
 import java.time.format.TextStyle
 import java.util.Locale
@@ -187,7 +186,7 @@ private fun AlarmRow(
             onDismissRequest = { showDeleteConfirm = false },
             title = { Text(stringResource(R.string.alarms_delete_title)) },
             text = {
-                Text(stringResource(R.string.alarms_delete_message, formatTime12h(alarm.hour, alarm.minute)))
+                Text(stringResource(R.string.alarms_delete_message, alarmTimeText(alarm.hour, alarm.minute)))
             },
             confirmButton = {
                 TextButton(onClick = {
@@ -242,7 +241,7 @@ private fun AlarmRowContent(
             Modifier.weight(1f)
         ) {
             Text(
-                formatTime12h(alarm.hour, alarm.minute),
+                alarmTimeText(alarm.hour, alarm.minute),
                 style = MaterialTheme.typography.headlineMedium,
                 color = if (isLocked) MaterialTheme.colorScheme.onSurfaceVariant else Color.Unspecified
             )
