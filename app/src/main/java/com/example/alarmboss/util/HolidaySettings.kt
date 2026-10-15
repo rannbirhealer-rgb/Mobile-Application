@@ -48,8 +48,12 @@ class HolidaySettings(context: Context) {
 
     /** Drops decisions about days that are over, so the stored sets don't grow forever. */
     fun prune(today: LocalDate) {
-        write(KEY_SKIPPED, pruneBefore(skippedDates, today))
-        write(KEY_ANSWERED, pruneBefore(answeredDates, today))
+        // Only write when something is actually dropped; every write wakes the preference listeners.
+        listOf(KEY_SKIPPED, KEY_ANSWERED).forEach { key ->
+            val stored = read(key)
+            val kept = pruneBefore(stored, today)
+            if (kept != stored) write(key, kept)
+        }
     }
 
     private fun read(key: String): Set<LocalDate> = parseDates(prefs.getStringSet(key, null))

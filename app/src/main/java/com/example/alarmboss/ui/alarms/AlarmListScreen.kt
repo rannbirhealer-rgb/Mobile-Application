@@ -40,6 +40,7 @@ import com.example.alarmboss.ui.theme.StreakFlameDark
 import com.example.alarmboss.ui.theme.StreakFlameLight
 import com.example.alarmboss.data.specificLocalDate
 import java.time.DayOfWeek
+import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.time.format.TextStyle
@@ -54,10 +55,24 @@ fun AlarmListScreen(
 ) {
     val alarms by viewModel.alarms.collectAsState()
     val currentStreak by viewModel.streak.collectAsState(initial = 0)
+    val skipDates by viewModel.skipDates.collectAsState()
+    val holidayPrompt by viewModel.holidayPrompt.collectAsState()
 
     // Reload the streak whenever the screen is composed or resumed
     LaunchedEffect(Unit) {
         viewModel.loadStreak()
+        viewModel.refreshHolidays()
+    }
+
+    // Closing the question without answering hides it for now; it returns on the next launch.
+    var dismissedHoliday by remember { mutableStateOf<LocalDate?>(null) }
+    holidayPrompt?.takeIf { it.holiday.date != dismissedHoliday }?.let { prompt ->
+        HolidayPromptDialog(
+            prompt = prompt,
+            onSkip = { viewModel.answerHoliday(prompt, skip = true) },
+            onKeep = { viewModel.answerHoliday(prompt, skip = false) },
+            onDismiss = { dismissedHoliday = prompt.holiday.date }
+        )
     }
 
     Scaffold(
@@ -99,6 +114,7 @@ fun AlarmListScreen(
                     items(alarms, key = { it.id }) { alarm ->
                         AlarmRow(
                             alarm = alarm,
+                            skipDates = skipDates,
                             onToggle = { enabled -> viewModel.setEnabled(alarm, enabled) },
                             onClick = { onEditAlarm(alarm.id) },
                             onDelete = { viewModel.delete(alarm) },
@@ -178,12 +194,13 @@ private fun ExactAlarmPermissionBanner() {
 @Composable
 private fun AlarmRow(
     alarm: Alarm,
+    skipDates: Set<LocalDate>,
     onToggle: (Boolean) -> Unit,
     onClick: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isLocked = isAlarmLocked(alarm)
+    val isLocked = isAlarmLocked(alarm, skipDates = skipDates)
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
     if (showDeleteConfirm) {

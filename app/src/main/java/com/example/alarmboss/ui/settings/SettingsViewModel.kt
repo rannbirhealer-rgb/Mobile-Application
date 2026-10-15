@@ -1,17 +1,24 @@
 package com.example.alarmboss.ui.settings
 
 import android.app.Application
+import android.content.Context
+import android.content.SharedPreferences
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.alarmboss.AlarmBossApp
+import com.example.alarmboss.alarm.AlarmRescheduler
 import com.example.alarmboss.data.ContentStore
+import com.example.alarmboss.engine.HolidayRegion
 import com.example.alarmboss.util.AccessibilitySettings
 import com.example.alarmboss.util.FollowUpSettings
+import com.example.alarmboss.util.HolidaySettings
 import com.example.alarmboss.util.SnoozeSettings
 import com.example.alarmboss.util.SoundSettings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 
 /** Reading passages are separated by a line containing three dashes, one passage per block. */
 internal fun parsePassages(text: String): List<String> =
@@ -66,6 +73,26 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _backupMinutes = MutableStateFlow(followUpSettings.backupMinutes)
     val backupMinutes: StateFlow<Int> = _backupMinutes
 
+    private val holidaySettings = HolidaySettings(application)
+    private val rescheduler = AlarmRescheduler(application, (application as AlarmBossApp).repository)
+
+    private val _holidayEnabled = MutableStateFlow(holidaySettings.enabled)
+    val holidayEnabled: StateFlow<Boolean> = _holidayEnabled
+
+    private val _holidayRegion = MutableStateFlow(holidaySettings.region)
+    val holidayRegion: StateFlow<HolidayRegion> = _holidayRegion
+
+    private val _customDays = MutableStateFlow(holidaySettings.customDates.sorted())
+    val customDays: StateFlow<List<LocalDate>> = _customDays
+
+    private val _skippedDays = MutableStateFlow(upcomingSkips())
+    val skippedDays: StateFlow<List<LocalDate>> = _skippedDays
+
+    // A skip can be agreed from the alarm list while this screen is alive, so follow the stored value.
+    private val skipListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key == "holiday_skipped_dates") _skippedDays.value = upcomingSkips()
+    }
+
     private val _passagesText = MutableStateFlow("")
     val passagesText: StateFlow<String> = _passagesText
 
@@ -73,12 +100,19 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     val lyricsText: StateFlow<String> = _lyricsText
 
     init {
+        application.getSharedPreferences("alarm_boss_settings", Context.MODE_PRIVATE)
+            .registerOnSharedPreferenceChangeListener(skipListener)
         // Seed the drafts once from what's stored. Reading continuously would overwrite
         // whatever the user is in the middle of typing.
         viewModelScope.launch {
             _passagesText.value = formatPassages(store.readingPassages.first())
             _lyricsText.value = formatLyrics(store.lyricLines.first())
         }
+    }
+
+    override fun onCleared() {
+        getApplication<Application>().getSharedPreferences("alarm_boss_settings", Context.MODE_PRIVATE)
+            .unregisterOnSharedPreferenceChangeListener(skipListener)
     }
 
     fun setSnoozeMinutes(minutes: Int) {
@@ -124,6 +158,44 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setBackupMinutes(minutes: Int) {
         followUpSettings.backupMinutes = minutes
         _backupMinutes.value = followUpSettings.backupMinutes
+    }
+
+    fun setHolidayEnabled(enabled: Boolean) {
+        holidaySettings.enabled = enabled
+        _holidayEnabled.value = enabled
+        reschedule()
+    }
+
+    fun setHolidayRegion(region: HolidayRegion) {
+        holidaySettings.region = region
+        _holidayRegion.value = region
+    }
+
+    fun addCustomDay(date: LocalDate) {
+        holidaySettings.addCustomDate(date)
+        _customDays.value = holidaySettings.customDates.sorted()
+    }
+
+    /** Removing a day off also undoes any skip already agreed for it. */
+    fun removeCustomDay(date: LocalDate) {
+        holidaySettings.removeCustomDate(date)
+        _customDays.value = holidaySettings.customDates.sorted()
+        cancelSkip(date)
+    }
+
+    /** Changes a confirmed skip back to ringing. Ringing more is always safe, so this is never gated. */
+    fun cancelSkip(date: LocalDate) {
+        holidaySettings.keepRinging(date)
+        _skippedDays.value = upcomingSkips()
+        reschedule()
+    }
+
+    private fun upcomingSkips(): List<LocalDate> =
+        holidaySettings.skippedDates.filter { !it.isBefore(LocalDate.now()) }.sorted()
+
+    // Alarms already queued with the system hold absolute times, so they need lining up again.
+    private fun reschedule() {
+        viewModelScope.launch { rescheduler.rescheduleAll() }
     }
 
     fun onPassagesChange(text: String) { _passagesText.value = text }
