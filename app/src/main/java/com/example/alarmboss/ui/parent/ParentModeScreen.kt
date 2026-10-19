@@ -23,6 +23,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -33,7 +34,12 @@ import com.example.alarmboss.data.Alarm
 import com.example.alarmboss.data.AlarmMode
 import com.example.alarmboss.data.MediumTaskType
 import com.example.alarmboss.data.ParentModeManager
-import com.example.alarmboss.util.formatTime12h
+import com.example.alarmboss.R
+import com.example.alarmboss.alarm.AlarmScheduler
+import com.example.alarmboss.ui.alarms.rememberIs24Hour
+import com.example.alarmboss.util.PinSecurity
+import com.example.alarmboss.util.formatTime
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -43,6 +49,7 @@ fun ParentModeScreen(onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     val app = context.applicationContext as AlarmBossApp
     val parentManager = remember { ParentModeManager(context) }
+    val is24Hour = rememberIs24Hour()
 
     var isModeActive by remember { mutableStateOf(parentManager.isParentModeActive()) }
 
@@ -59,10 +66,9 @@ fun ParentModeScreen(onBack: () -> Unit) {
     var bedtimeMinute by remember { mutableStateOf(parentManager.getBedtimeMinute()) }
     var strictLock by remember { mutableStateOf(parentManager.isStrictLockEnabled()) }
 
-    // Dialog for disabling / exiting parent mode
+    // Dialogs for turning the lock off and for leaving parent mode; both need the PIN
     var showDisableDialog by remember { mutableStateOf(false) }
-    var enteredPinForDisable by remember { mutableStateOf("") }
-    var pinError by remember { mutableStateOf(false) }
+    var showLockOffDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -79,12 +85,12 @@ fun ParentModeScreen(onBack: () -> Unit) {
                             }
                         }
                         Spacer(Modifier.width(10.dp))
-                        Text("Parent Mode (Ages 9-12)", fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.parent_title), fontWeight = FontWeight.Bold)
                     }
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
@@ -111,11 +117,11 @@ fun ParentModeScreen(onBack: () -> Unit) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Security, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text("Parent Mode Active & Protected", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text(stringResource(R.string.parent_active_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         }
 
                         Text(
-                            text = "Supervised by ${parentManager.getParentName()} for ${parentManager.getChildName()} (Age ${parentManager.getChildAge()})",
+                            text = stringResource(R.string.parent_supervised, parentManager.getParentName(), parentManager.getChildName(), parentManager.getChildAge()),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -124,12 +130,12 @@ fun ParentModeScreen(onBack: () -> Unit) {
 
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Column {
-                                Text("School Wake-Up", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text(formatTime12h(parentManager.getSchoolWakeHour(), parentManager.getSchoolWakeMinute()), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                Text(stringResource(R.string.parent_school_wake), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(formatTime(parentManager.getSchoolWakeHour(), parentManager.getSchoolWakeMinute(), is24Hour), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                             }
                             Column {
-                                Text("Bedtime Reminder", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text(formatTime12h(parentManager.getBedtimeHour(), parentManager.getBedtimeMinute()), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
+                                Text(stringResource(R.string.parent_bedtime), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(formatTime(parentManager.getBedtimeHour(), parentManager.getBedtimeMinute(), is24Hour), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
                             }
                         }
 
@@ -141,14 +147,19 @@ fun ParentModeScreen(onBack: () -> Unit) {
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
-                                Text("Strict Child PIN Lock", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                                Text("Prevents child from deleting or modifying alarms without your 4-digit PIN", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(stringResource(R.string.parent_lock_title), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                                Text(stringResource(R.string.parent_lock_body), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             Switch(
                                 checked = strictLock,
-                                onCheckedChange = {
-                                    strictLock = it
-                                    parentManager.updateStrictLock(it)
+                                onCheckedChange = { wanted ->
+                                    // Turning the lock off is what it exists to stop, so that needs the PIN.
+                                    if (wanted) {
+                                        parentManager.enableStrictLock()
+                                        strictLock = true
+                                    } else {
+                                        showLockOffDialog = true
+                                    }
                                 }
                             )
                         }
@@ -163,7 +174,7 @@ fun ParentModeScreen(onBack: () -> Unit) {
                         ) {
                             Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text("Disable Parent Mode (Requires PIN)", fontWeight = FontWeight.Bold)
+                            Text(stringResource(R.string.parent_disable), fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -179,14 +190,14 @@ fun ParentModeScreen(onBack: () -> Unit) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.School, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                             Spacer(Modifier.width(8.dp))
-                            Text("Parent Details Verification", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text(stringResource(R.string.parent_details_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         }
 
                         OutlinedTextField(
                             value = parentName,
                             onValueChange = { parentName = it },
-                            label = { Text("Parent / Guardian Name") },
-                            placeholder = { Text("e.g. Sarah Jenkins") },
+                            label = { Text(stringResource(R.string.parent_name_label)) },
+                            placeholder = { Text(stringResource(R.string.parent_name_hint)) },
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -194,8 +205,8 @@ fun ParentModeScreen(onBack: () -> Unit) {
                         OutlinedTextField(
                             value = parentEmail,
                             onValueChange = { parentEmail = it },
-                            label = { Text("Parent Email (for recovery)") },
-                            placeholder = { Text("parent@example.com") },
+                            label = { Text(stringResource(R.string.parent_email_label)) },
+                            placeholder = { Text(stringResource(R.string.parent_email_hint)) },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.fillMaxWidth()
@@ -204,8 +215,8 @@ fun ParentModeScreen(onBack: () -> Unit) {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             OutlinedTextField(
                                 value = pin,
-                                onValueChange = { if (it.length <= 4) pin = it },
-                                label = { Text("4-Digit PIN") },
+                                onValueChange = { input -> pin = input.filter { it in '0'..'9' }.take(PinSecurity.PIN_LENGTH) },
+                                label = { Text(stringResource(R.string.parent_pin_label)) },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                                 visualTransformation = PasswordVisualTransformation(),
                                 shape = RoundedCornerShape(12.dp),
@@ -213,8 +224,8 @@ fun ParentModeScreen(onBack: () -> Unit) {
                             )
                             OutlinedTextField(
                                 value = pinConfirm,
-                                onValueChange = { if (it.length <= 4) pinConfirm = it },
-                                label = { Text("Confirm PIN") },
+                                onValueChange = { input -> pinConfirm = input.filter { it in '0'..'9' }.take(PinSecurity.PIN_LENGTH) },
+                                label = { Text(stringResource(R.string.parent_pin_confirm_label)) },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                                 visualTransformation = PasswordVisualTransformation(),
                                 shape = RoundedCornerShape(12.dp),
@@ -235,25 +246,25 @@ fun ParentModeScreen(onBack: () -> Unit) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.ChildCare, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
                             Spacer(Modifier.width(8.dp))
-                            Text("Child / Ward Profile (Ages 9-12)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text(stringResource(R.string.parent_child_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         }
 
                         OutlinedTextField(
                             value = childName,
                             onValueChange = { childName = it },
-                            label = { Text("Child's First Name") },
-                            placeholder = { Text("e.g. Leo") },
+                            label = { Text(stringResource(R.string.parent_child_name_label)) },
+                            placeholder = { Text(stringResource(R.string.parent_child_name_hint)) },
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.fillMaxWidth()
                         )
 
-                        Text("Select Age (Curates educational challenge difficulty):", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.parent_age_prompt), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                             listOf(9, 10, 11, 12).forEach { age ->
                                 FilterChip(
                                     selected = childAge == age,
                                     onClick = { childAge = age },
-                                    label = { Text("$age yrs", fontWeight = FontWeight.Bold) },
+                                    label = { Text(stringResource(R.string.parent_age_option, age), fontWeight = FontWeight.Bold) },
                                     shape = RoundedCornerShape(10.dp)
                                 )
                             }
@@ -266,14 +277,14 @@ fun ParentModeScreen(onBack: () -> Unit) {
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
-                                    TimePickerDialog(context, { _, h, m -> schoolWakeHour = h; schoolWakeMinute = m }, schoolWakeHour, schoolWakeMinute, false).show()
+                                    TimePickerDialog(context, { _, h, m -> schoolWakeHour = h; schoolWakeMinute = m }, schoolWakeHour, schoolWakeMinute, is24Hour).show()
                                 },
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column {
-                                Text("School Morning Wake-Up", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                                Text("Mon - Fri routine with locked awake check", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(stringResource(R.string.parent_school_morning), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                                Text(stringResource(R.string.parent_school_morning_body), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             Surface(
                                 shape = RoundedCornerShape(10.dp),
@@ -283,25 +294,28 @@ fun ParentModeScreen(onBack: () -> Unit) {
                                 Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                                     Icon(Icons.Default.AccessTime, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
                                     Spacer(Modifier.width(6.dp))
-                                    Text(formatTime12h(schoolWakeHour, schoolWakeMinute), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                                    Text(formatTime(schoolWakeHour, schoolWakeMinute, is24Hour), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
                                 }
                             }
                         }
                     }
                 }
 
+                val errorNames = stringResource(R.string.parent_error_names)
+                val errorPin = stringResource(R.string.parent_error_pin)
+                val enabledToast = stringResource(R.string.parent_enabled_toast)
+                val schoolLabel = stringResource(R.string.parent_school_alarm_label, childName.trim())
                 Button(
                     onClick = {
                         if (parentName.isBlank() || childName.isBlank()) {
-                            Toast.makeText(context, "Please enter parent and child names", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, errorNames, Toast.LENGTH_SHORT).show()
                             return@Button
                         }
-                        if (pin.length != 4 || pin != pinConfirm) {
-                            Toast.makeText(context, "Please enter matching 4-digit PINs", Toast.LENGTH_SHORT).show()
+                        if (!PinSecurity.isValidPin(pin) || pin != pinConfirm) {
+                            Toast.makeText(context, errorPin, Toast.LENGTH_SHORT).show()
                             return@Button
                         }
-
-                        parentManager.setupParentMode(
+                        val enabled = parentManager.setupParentMode(
                             parentName = parentName,
                             parentEmail = parentEmail,
                             pin = pin,
@@ -311,24 +325,32 @@ fun ParentModeScreen(onBack: () -> Unit) {
                             schoolWakeMinute = schoolWakeMinute,
                             strictLock = true
                         )
-
-                        // Automatically schedule the school alarm for the child
+                        if (!enabled) {
+                            Toast.makeText(context, errorPin, Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
+                        // Schedule the school alarm, unless a routine for this child is already there:
+                        // turning Parent Mode off and on again must not pile up duplicate alarms.
                         scope.launch {
-                            val schoolAlarm = Alarm(
+                            val weekdays = setOf(1, 2, 3, 4, 5)
+                            val existing = app.repository.observeAlarms().first().firstOrNull {
+                                it.label == schoolLabel && it.repeatDays == weekdays
+                            }
+                            val schoolAlarm = (existing ?: Alarm(
                                 hour = schoolWakeHour,
                                 minute = schoolWakeMinute,
-                                label = "🎒 School Routine for $childName",
-                                isEnabled = true,
-                                repeatDays = setOf(1, 2, 3, 4, 5),
+                                label = schoolLabel,
+                                repeatDays = weekdays,
                                 mode = AlarmMode.MEDIUM,
                                 enabledMediumTasks = setOf(MediumTaskType.READING, MediumTaskType.MATH),
                                 wakeCheck = true,
                                 morningBriefing = true
-                            )
+                            )).copy(hour = schoolWakeHour, minute = schoolWakeMinute, isEnabled = true)
                             val savedId = app.repository.save(schoolAlarm)
-                            com.example.alarmboss.alarm.AlarmScheduler(context).schedule(schoolAlarm.copy(id = savedId))
+                            val saved = if (schoolAlarm.id == 0L) schoolAlarm.copy(id = savedId) else schoolAlarm
+                            AlarmScheduler(context).schedule(saved)
                             isModeActive = true
-                            Toast.makeText(context, "Parent Mode activated & school alarm scheduled!", Toast.LENGTH_LONG).show()
+                            Toast.makeText(context, enabledToast, Toast.LENGTH_LONG).show()
                         }
                     },
                     shape = RoundedCornerShape(14.dp),
@@ -336,62 +358,38 @@ fun ParentModeScreen(onBack: () -> Unit) {
                 ) {
                     Icon(Icons.Default.Security, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
-                    Text("Verify & Enable Parent Mode", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text(stringResource(R.string.parent_enable), fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 }
             }
         }
     }
 
     if (showDisableDialog) {
-        AlertDialog(
-            onDismissRequest = {
+        val disabledToast = stringResource(R.string.parent_disabled_toast)
+        ParentPinDialog(
+            manager = parentManager,
+            message = stringResource(R.string.parent_disable_message),
+            confirmLabel = stringResource(R.string.action_confirm),
+            onVerified = {
+                parentManager.disableParentModeAfterPinCheck()
+                isModeActive = false
                 showDisableDialog = false
-                enteredPinForDisable = ""
-                pinError = false
+                Toast.makeText(context, disabledToast, Toast.LENGTH_SHORT).show()
             },
-            title = { Text("Enter Parent PIN", fontWeight = FontWeight.Bold) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Enter your 4-digit security PIN to disable Parent Mode and unlock alarm controls:")
-                    OutlinedTextField(
-                        value = enteredPinForDisable,
-                        onValueChange = {
-                            enteredPinForDisable = it
-                            pinError = false
-                        },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                        visualTransformation = PasswordVisualTransformation(),
-                        isError = pinError,
-                        singleLine = true,
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    if (pinError) {
-                        Text("Incorrect PIN. Please try again.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                    }
-                }
+            onDismiss = { showDisableDialog = false }
+        )
+    }
+    if (showLockOffDialog) {
+        ParentPinDialog(
+            manager = parentManager,
+            message = stringResource(R.string.parent_lock_off_message),
+            confirmLabel = stringResource(R.string.action_confirm),
+            onVerified = {
+                parentManager.disableStrictLockAfterPinCheck()
+                strictLock = false
+                showLockOffDialog = false
             },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        if (parentManager.disableParentMode(enteredPinForDisable)) {
-                            isModeActive = false
-                            showDisableDialog = false
-                            enteredPinForDisable = ""
-                            Toast.makeText(context, "Parent Mode disabled", Toast.LENGTH_SHORT).show()
-                        } else {
-                            pinError = true
-                        }
-                    }
-                ) {
-                    Text("Confirm")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDisableDialog = false }) {
-                    Text("Cancel")
-                }
-            }
+            onDismiss = { showLockOffDialog = false }
         )
     }
 }

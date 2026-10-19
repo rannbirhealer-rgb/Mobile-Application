@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="alarms_templates">Templates</string>
+    <string name="alarms_template_applied">Applied template: %1$s</string>
+    <string name="alarms_parent_manage">Manage</string>
+    <string name="alarms_tagline">Conquer your mornings</string>
+    <string name="alarms_streak_window_title">Strict morning window: %1$d:00 to %2$d:00</string>
+    <string name="alarms_streak_window_body">Only wake-ups completed within this morning window count toward your streak.</string>
+    <string name="alarms_empty_title">No alarms scheduled</string>
+    <string name="alarms_create">Create new alarm</string>
+    <string name="alarms_locked_badge">Locked</string>
+    <string name="alarms_parent_active">Parent Mode active: %1$s (age %2$d)</string>
+</resources>

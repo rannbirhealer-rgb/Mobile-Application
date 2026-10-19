@@ -54,6 +54,8 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import com.example.alarmboss.data.ParentModeManager
+import com.example.alarmboss.ui.parent.ParentPinDialog
+import com.example.alarmboss.util.StreakManager
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -74,18 +76,15 @@ fun AlarmListScreen(
     val holidayPrompt by viewModel.holidayPrompt.collectAsState()
 
     var showTemplatesSheet by remember { mutableStateOf(false) }
+    val templateApplied = { label: String -> context.getString(R.string.alarms_template_applied, label) }
 
     // Parent PIN verification dialog state
     var showPinDialog by remember { mutableStateOf(false) }
-    var enteredPin by remember { mutableStateOf("") }
-    var pinError by remember { mutableStateOf(false) }
     var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
 
     fun runProtectedAction(action: () -> Unit) {
-        if (parentManager.isParentModeActive() && parentManager.isStrictLockEnabled()) {
+        if (parentManager.isLockActive()) {
             pendingAction = action
-            enteredPin = ""
-            pinError = false
             showPinDialog = true
         } else {
             action()
@@ -102,7 +101,7 @@ fun AlarmListScreen(
     holidayPrompt?.takeIf { it.holiday.date != dismissedHoliday }?.let { prompt ->
         HolidayPromptDialog(
             prompt = prompt,
-            onSkip = { viewModel.answerHoliday(prompt, skip = true) },
+            onSkip = { runProtectedAction { viewModel.answerHoliday(prompt, skip = true) } },
             onKeep = { viewModel.answerHoliday(prompt, skip = false) },
             onDismiss = { dismissedHoliday = prompt.holiday.date }
         )
@@ -111,70 +110,27 @@ fun AlarmListScreen(
         AlarmTemplatesBottomSheet(
             onDismiss = { showTemplatesSheet = false },
             onSelectTemplate = { templateAlarm ->
-                viewModel.save(templateAlarm)
-                Toast.makeText(context, "Applied template: ${templateAlarm.label}", Toast.LENGTH_SHORT).show()
+                runProtectedAction {
+                    viewModel.save(templateAlarm)
+                    Toast.makeText(context, templateApplied(templateAlarm.label), Toast.LENGTH_SHORT).show()
+                }
             }
         )
     }
 
     if (showPinDialog) {
-        AlertDialog(
-            onDismissRequest = {
+        ParentPinDialog(
+            manager = parentManager,
+            message = stringResource(R.string.parent_pin_alarm_message),
+            confirmLabel = stringResource(R.string.parent_pin_unlock),
+            onVerified = {
                 showPinDialog = false
+                pendingAction?.invoke()
                 pendingAction = null
             },
-            title = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Parent PIN Required", fontWeight = FontWeight.Bold)
-                }
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        "Parent Mode is active. Enter your 4-digit PIN to modify or delete this alarm:",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    OutlinedTextField(
-                        value = enteredPin,
-                        onValueChange = {
-                            enteredPin = it
-                            pinError = false
-                        },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                        visualTransformation = PasswordVisualTransformation(),
-                        isError = pinError,
-                        singleLine = true,
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    if (pinError) {
-                        Text("Incorrect PIN. Please try again.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                    }
-                }
-            },
-            confirmButton = {
-                Button(onClick = {
-                    if (parentManager.verifyPin(enteredPin)) {
-                        showPinDialog = false
-                        pendingAction?.invoke()
-                        pendingAction = null
-                    } else {
-                        pinError = true
-                    }
-                }) {
-                    Text("Unlock")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    showPinDialog = false
-                    pendingAction = null
-                }) {
-                    Text("Cancel")
-                }
+            onDismiss = {
+                showPinDialog = false
+                pendingAction = null
             }
         )
     }
@@ -206,7 +162,7 @@ fun AlarmListScreen(
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                "Conquer your mornings",
+                                stringResource(R.string.alarms_tagline),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -223,14 +179,14 @@ fun AlarmListScreen(
                     ) {
                         Icon(Icons.Default.Bolt, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text("Templates", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.alarms_templates), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
 
                     // Parent Mode Button
                     IconButton(onClick = onOpenParentMode) {
                         Icon(
                             Icons.Default.FamilyRestroom,
-                            contentDescription = "Parent Mode",
+                            contentDescription = stringResource(R.string.parent_card_title),
                             tint = if (parentManager.isParentModeActive()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -280,7 +236,7 @@ fun AlarmListScreen(
                             Icon(Icons.Default.FamilyRestroom, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                "Parent Mode Active: ${parentManager.getChildName()} (Age ${parentManager.getChildAge()})",
+                                stringResource(R.string.alarms_parent_active, parentManager.getChildName(), parentManager.getChildAge()),
                                 style = MaterialTheme.typography.bodySmall,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer
@@ -290,7 +246,7 @@ fun AlarmListScreen(
                             onClick = onOpenParentMode,
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
                         ) {
-                            Text("Manage", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Text(stringResource(R.string.alarms_parent_manage), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -333,13 +289,13 @@ fun AlarmListScreen(
                                 }
                                 Spacer(Modifier.height(4.dp))
                                 Text(
-                                    text = "Strict Morning Window: 5:00 AM – 10:00 AM",
+                                    text = stringResource(R.string.alarms_streak_window_title, StreakManager.MORNING_WINDOW_START_HOUR, StreakManager.MORNING_WINDOW_END_HOUR),
                                     style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White
                                 )
                                 Text(
-                                    text = "Only wake-ups completed within this morning window count toward your streak!",
+                                    text = stringResource(R.string.alarms_streak_window_body),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = Color.White.copy(alpha = 0.90f)
                                 )
@@ -374,7 +330,7 @@ fun AlarmListScreen(
                             }
                         }
                         Text(
-                            text = "No Alarms Scheduled",
+                            text = stringResource(R.string.alarms_empty_title),
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold
                         )
@@ -386,12 +342,12 @@ fun AlarmListScreen(
                         )
                         Spacer(Modifier.height(4.dp))
                         FilledTonalButton(
-                            onClick = onAddAlarm,
+                            onClick = { runProtectedAction(onAddAlarm) },
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Icon(Icons.Default.Add, contentDescription = null)
                             Spacer(Modifier.width(8.dp))
-                            Text("Create New Alarm")
+                            Text(stringResource(R.string.alarms_create))
                         }
                     }
                 }
@@ -629,7 +585,7 @@ private fun AlarmCardContent(
                                 )
                                 Spacer(Modifier.width(4.dp))
                                 Text(
-                                    "Locked",
+                                    stringResource(R.string.alarms_locked_badge),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onErrorContainer,
                                     fontWeight = FontWeight.Bold

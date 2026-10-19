@@ -31,6 +31,8 @@ import androidx.compose.material.icons.filled.Spa
 import androidx.compose.ui.platform.LocalContext
 import com.example.alarmboss.alarm.AlarmDeviceAdminReceiver
 import com.example.alarmboss.data.ParentModeManager
+import com.example.alarmboss.ui.alarms.rememberIs24Hour
+import com.example.alarmboss.util.formatTime
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -81,7 +83,7 @@ fun SettingsScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.FamilyRestroom, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text("Parent Mode (Ages 9-12)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text(stringResource(R.string.parent_card_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         }
 
                         Surface(
@@ -89,7 +91,7 @@ fun SettingsScreen(
                             color = if (parentManager.isParentModeActive()) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
                         ) {
                             Text(
-                                text = if (parentManager.isParentModeActive()) "PROTECTED" else "SETUP",
+                                text = stringResource(if (parentManager.isParentModeActive()) R.string.parent_card_badge_on else R.string.parent_card_badge_off),
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = if (parentManager.isParentModeActive()) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -100,9 +102,14 @@ fun SettingsScreen(
 
                     Text(
                         text = if (parentManager.isParentModeActive()) {
-                            "Active for ${parentManager.getChildName()} (Age ${parentManager.getChildAge()}). School wakeup set to ${com.example.alarmboss.util.formatTime12h(parentManager.getSchoolWakeHour(), parentManager.getSchoolWakeMinute())} with locked awake safeguard."
+                            stringResource(
+                                R.string.parent_card_active,
+                                parentManager.getChildName(),
+                                parentManager.getChildAge(),
+                                formatTime(parentManager.getSchoolWakeHour(), parentManager.getSchoolWakeMinute(), rememberIs24Hour())
+                            )
                         } else {
-                            "Configure child-friendly morning routines (Ages 9-12) and lock alarms behind a 4-digit security PIN so your child cannot disable them."
+                            stringResource(R.string.parent_card_inactive)
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -115,7 +122,7 @@ fun SettingsScreen(
                     ) {
                         Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text(if (parentManager.isParentModeActive()) "Manage Parent Controls & Schedule" else "Setup Parent Mode", fontWeight = FontWeight.Bold)
+                        Text(stringResource(if (parentManager.isParentModeActive()) R.string.parent_card_manage else R.string.parent_card_setup), fontWeight = FontWeight.Bold)
                     }
                 }
             }

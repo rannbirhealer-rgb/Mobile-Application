@@ -38,7 +38,9 @@ import com.example.alarmboss.ui.ringing.tasks.MemoryTaskScreen
 import com.example.alarmboss.ui.ringing.tasks.PatternLockTaskScreen
 import com.example.alarmboss.ui.ringing.tasks.ReadingTaskScreen
 import com.example.alarmboss.ui.ringing.tasks.WordScrambleTaskScreen
+import com.example.alarmboss.data.ParentModeManager
 import com.example.alarmboss.ui.common.HoldToConfirmButton
+import com.example.alarmboss.ui.parent.ParentPinDialog
 import android.speech.tts.TextToSpeech
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -68,6 +70,8 @@ class AlarmRingingActivity : ComponentActivity() {
     private var tts: TextToSpeech? = null
     private var isBatteryCritical by mutableStateOf(false)
     private var showMorningQuest by mutableStateOf(false)
+    private var askParentPinToStop by mutableStateOf(false)
+    private val parentMode by lazy { ParentModeManager(this) }
     private var batteryAlertJob: kotlinx.coroutines.Job? = null
     private var isAlarmActive = true
 
@@ -187,7 +191,7 @@ class AlarmRingingActivity : ComponentActivity() {
                                 it,
                                 onDismiss = { dismissAlarm(it) },
                                 onSnooze = ::snoozeAlarm,
-                                onEmergencyStop = ::emergencyStop,
+                                onEmergencyStop = ::requestEmergencyStop,
                                 onUsePuzzleInstead = viewModel::useStrictPuzzleAlternative
                             )
                         } ?: LoadingContent()
@@ -219,6 +223,21 @@ class AlarmRingingActivity : ComponentActivity() {
                                     )
                                 }
                             }
+                        }
+
+                        // With Parent Mode's lock on, ending an alarm without its challenge is the
+                        // parent's decision, not the child's.
+                        if (askParentPinToStop) {
+                            ParentPinDialog(
+                                manager = parentMode,
+                                message = stringResource(R.string.parent_pin_stop_message),
+                                confirmLabel = stringResource(R.string.action_confirm),
+                                onVerified = {
+                                    askParentPinToStop = false
+                                    emergencyStop()
+                                },
+                                onDismiss = { askParentPinToStop = false }
+                            )
                         }
 
                         if (showMorningQuest) {
@@ -299,6 +318,10 @@ class AlarmRingingActivity : ComponentActivity() {
             )
         }
         showMorningQuest = true
+    }
+
+    private fun requestEmergencyStop() {
+        if (parentMode.isLockActive()) askParentPinToStop = true else emergencyStop()
     }
 
     private fun emergencyStop() {
