@@ -8,7 +8,6 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -22,6 +21,8 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -47,11 +48,15 @@ fun HoldToConfirmButton(
     val scope = rememberCoroutineScope()
     val latestOnConfirmed = rememberUpdatedState(onConfirmed)
     val shape = RoundedCornerShape(24.dp)
+    val fill = MaterialTheme.colorScheme.error.copy(alpha = 0.35f)
 
     Box(
         modifier
             .clip(shape)
             .background(MaterialTheme.colorScheme.errorContainer)
+            // Drawn behind the label rather than as a child that fills the height: a child that fills
+            // the height makes a wrap-content button stretch to the whole screen.
+            .drawBehind { drawRect(fill, size = Size(size.width * progress.value, size.height)) }
             .semantics { role = Role.Button; contentDescription = label }
             .pointerInput(holdMillis) {
                 awaitEachGesture {
@@ -67,13 +72,6 @@ fun HoldToConfirmButton(
             },
         contentAlignment = Alignment.Center
     ) {
-        Box(
-            Modifier
-                .align(Alignment.CenterStart)
-                .fillMaxHeight()
-                .fillMaxWidth(progress.value)
-                .background(MaterialTheme.colorScheme.error.copy(alpha = 0.35f))
-        )
         Text(
             label,
             style = MaterialTheme.typography.labelLarge,

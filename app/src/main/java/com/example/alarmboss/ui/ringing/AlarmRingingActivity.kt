@@ -366,7 +366,7 @@ private fun RingingContent(
 @Composable
 private fun EmergencyStopBar(onConfirmed: () -> Unit) {
     Column(
-        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(stringResource(R.string.emergency_stop_prompt), style = MaterialTheme.typography.bodySmall)
