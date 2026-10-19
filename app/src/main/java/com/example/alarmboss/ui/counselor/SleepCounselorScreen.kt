@@ -184,10 +184,6 @@ fun SleepCounselorScreen() {
                     onClick = { sendMessage("What is a good 30-min screen-free wind-down routine?") },
                     label = { Text("📱 Digital dusk routine", fontSize = 12.sp) }
                 )
-                SuggestionChip(
-                    onClick = { sendMessage("What is the most popular restaurant in town?") },
-                    label = { Text("🍔 Test out-of-context guardrail", fontSize = 12.sp) }
-                )
             }
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))

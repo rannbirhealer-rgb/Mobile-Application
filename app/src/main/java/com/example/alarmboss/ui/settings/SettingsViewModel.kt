@@ -224,14 +224,47 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch { store.setRegisteredBarcode(_barcodeText.value) }
     }
 
+    private val _hasCounselorKey = MutableStateFlow(counselorEngine.hasApiKey())
+    val hasCounselorKey: StateFlow<Boolean> = _hasCounselorKey
+
+    private val _counselorKeyDraft = MutableStateFlow("")
+    val counselorKeyDraft: StateFlow<String> = _counselorKeyDraft
+
+    /** Why the last "AI Generate" produced nothing; shown once, then cleared. */
+    private val _generationFailed = MutableStateFlow(false)
+    val generationFailed: StateFlow<Boolean> = _generationFailed
+
+    fun onCounselorKeyChange(text: String) { _counselorKeyDraft.value = text }
+
+    fun saveCounselorKey() {
+        counselorEngine.saveApiKey(_counselorKeyDraft.value)
+        _counselorKeyDraft.value = ""
+        _hasCounselorKey.value = counselorEngine.hasApiKey()
+    }
+
+    fun clearCounselorKey() {
+        counselorEngine.clearApiKey()
+        _hasCounselorKey.value = false
+    }
+
+
+    /**
+     * Asks the AI for fresh reading passages and adds them to the end of the user's own. They are
+     * never replaced: a tap here must not wipe passages someone wrote or chose, and without a key or
+     * a connection there is simply nothing to add, which is reported instead of faked.
+     */
     fun generatePassagesWithGemini() {
-        if (_isGeneratingPassages.value) return
+        if (_isGeneratingPassages.value || !counselorEngine.hasApiKey()) return
         viewModelScope.launch {
             _isGeneratingPassages.value = true
+            _generationFailed.value = false
             try {
                 val generated = counselorEngine.generateReadingPassages()
-                _passagesText.value = generated
+                val existing = _passagesText.value.trim()
+                _passagesText.value = if (existing.isEmpty()) generated else existing + "\n---\n" + generated
                 savePassages()
+            } catch (e: Exception) {
+                _generationFailed.value = true
             } finally {
                 _isGeneratingPassages.value = false
             }

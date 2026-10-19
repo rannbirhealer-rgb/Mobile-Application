@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.alarmboss.R
@@ -45,6 +46,9 @@ fun SettingsScreen(
     val lyricsText by viewModel.lyricsText.collectAsState()
     val barcodeText by viewModel.barcodeText.collectAsState()
     val isGeneratingPassages by viewModel.isGeneratingPassages.collectAsState()
+    val hasCounselorKey by viewModel.hasCounselorKey.collectAsState()
+    val counselorKeyDraft by viewModel.counselorKeyDraft.collectAsState()
+    val generationFailed by viewModel.generationFailed.collectAsState()
 
     Scaffold(
         topBar = {
@@ -134,14 +138,52 @@ fun SettingsScreen(
                     ) {
                         Icon(Icons.Default.Spa, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(22.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text("Sleep & Wellness Counselor", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.settings_counselor_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     }
 
                     Text(
-                        "Provides humane, non-judgmental sleep hygiene counseling and bedtime wellness guidance. Open the Sleep AI tab to chat anytime.",
+                        stringResource(R.string.settings_counselor_body),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+
+                    Text(
+                        stringResource(R.string.settings_counselor_ai_title),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        stringResource(R.string.settings_counselor_ai_body),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (hasCounselorKey) {
+                        Text(
+                            stringResource(R.string.settings_counselor_key_saved),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        OutlinedButton(onClick = viewModel::clearCounselorKey, shape = RoundedCornerShape(10.dp)) {
+                            Text(stringResource(R.string.settings_counselor_key_remove))
+                        }
+                    } else {
+                        OutlinedTextField(
+                            value = counselorKeyDraft,
+                            onValueChange = viewModel::onCounselorKeyChange,
+                            label = { Text(stringResource(R.string.settings_counselor_key_label)) },
+                            visualTransformation = PasswordVisualTransformation(),
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Button(
+                            onClick = viewModel::saveCounselorKey,
+                            enabled = counselorKeyDraft.isNotBlank(),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text(stringResource(R.string.settings_counselor_key_save), fontWeight = FontWeight.Bold)
+                        }
+                    }
                 }
             }
 
@@ -155,11 +197,11 @@ fun SettingsScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.PrivacyTip, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(22.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text("Privacy & Anti-Deepfake Guarantee", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.settings_privacy_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     }
 
                     Text(
-                        "Unlike other alarm apps (e.g. Alarmy) that demand photos of your home/bathroom and record ambient bedroom audio, AlarmBoss is 100% privacy-respecting:",
+                        stringResource(R.string.settings_privacy_intro),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -169,9 +211,10 @@ fun SettingsScreen(
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
                     ) {
                         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text("🛡️ No Home Photos: Zero images of your private residence are captured or stored, eliminating deepfake and biometric risks.", style = MaterialTheme.typography.bodySmall)
-                            Text("🎙️ Zero Nighttime Audio Snooping: No background voice or snoring eavesdropping.", style = MaterialTheme.typography.bodySmall)
-                            Text("📱 On-Device Processing: Barcode scans and ML Kit pose gestures run purely on-device.", style = MaterialTheme.typography.bodySmall)
+                            Text(stringResource(R.string.settings_privacy_photos), style = MaterialTheme.typography.bodySmall)
+                            Text(stringResource(R.string.settings_privacy_audio), style = MaterialTheme.typography.bodySmall)
+                            Text(stringResource(R.string.settings_privacy_device), style = MaterialTheme.typography.bodySmall)
+                            Text(stringResource(R.string.settings_privacy_online), style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }
@@ -275,7 +318,7 @@ fun SettingsScreen(
                         value = barcodeText,
                         onValueChange = viewModel::onBarcodeChange,
                         singleLine = true,
-                        placeholder = { Text("e.g. 8901030383742") },
+                        placeholder = { Text(stringResource(R.string.settings_barcode_hint)) },
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -346,19 +389,33 @@ fun SettingsScreen(
 
                         OutlinedButton(
                             onClick = viewModel::generatePassagesWithGemini,
-                            enabled = !isGeneratingPassages,
+                            enabled = !isGeneratingPassages && hasCounselorKey,
                             shape = RoundedCornerShape(10.dp)
                         ) {
                             if (isGeneratingPassages) {
                                 CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                                 Spacer(Modifier.width(8.dp))
-                                Text("Generating...")
+                                Text(stringResource(R.string.settings_generating))
                             } else {
                                 Icon(Icons.Default.Spa, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(Modifier.width(6.dp))
-                                Text("✨ AI Generate")
+                                Text(stringResource(R.string.settings_ai_generate))
                             }
                         }
+                    }
+                    if (!hasCounselorKey) {
+                        Text(
+                            stringResource(R.string.settings_ai_generate_needs_key),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    if (generationFailed) {
+                        Text(
+                            stringResource(R.string.settings_ai_generate_failed),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
                     }
 
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))

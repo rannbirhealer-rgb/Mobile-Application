@@ -167,24 +167,20 @@ CORE MISSION & ETHOS:
         }
     }
 
-    fun getApiKey(): String {
-        // 1. Read from BuildConfig (securely injected from gitignored local.properties)
-        try {
-            val keyFromBuildConfig = com.example.alarmboss.BuildConfig.GEMINI_API_KEY
-            if (keyFromBuildConfig.isNotBlank()) {
-                return keyFromBuildConfig.trim()
-            }
-        } catch (e: Throwable) {
-            // BuildConfig not generated yet or in standalone unit test environment
-        }
-        // 2. Check SharedPreferences if configured locally
-        val saved = prefs.getString(PREFS_KEY_STORAGE, "") ?: ""
-        if (saved.isNotBlank()) return saved.trim()
-        return prefs.getString("gemini_api_key", "") ?: ""
-    }
+    /**
+     * The user's own Gemini key, kept on this device. There is deliberately no key built into the app:
+     * a key compiled into an APK can be pulled out of it by anyone who downloads the release.
+     */
+    fun getApiKey(): String = (prefs.getString(PREFS_KEY_STORAGE, "") ?: "").trim()
+
+    fun hasApiKey(): Boolean = getApiKey().isNotEmpty()
 
     fun saveApiKey(key: String) {
         prefs.edit().putString(PREFS_KEY_STORAGE, key.trim()).apply()
+    }
+
+    fun clearApiKey() {
+        prefs.edit().remove(PREFS_KEY_STORAGE).apply()
     }
 
     suspend fun getCounselorResponse(
@@ -211,14 +207,15 @@ CORE MISSION & ETHOS:
         userMessage: String
     ): String {
         // Try DEFAULT_MODEL first, then standard gemini flash models
-        val models = listOf(DEFAULT_MODEL, "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash").distinct()
+        val models = listOf(DEFAULT_MODEL, "gemini-2.5-flash").distinct()
         var lastException: Exception? = null
 
         for (model in models) {
             try {
-                val urlString = "https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey"
+                val urlString = "https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent"
                 val url = URL(urlString)
                 val conn = url.openConnection() as HttpURLConnection
+                conn.setRequestProperty("x-goog-api-key", apiKey)
                 conn.requestMethod = "POST"
                 conn.setRequestProperty("Content-Type", "application/json")
                 conn.connectTimeout = 15000
@@ -290,25 +287,21 @@ CORE MISSION & ETHOS:
         throw lastException ?: Exception("Failed to contact Gemini API")
     }
 
+    /** Fresh reading passages from the AI. Throws if there is no key or the request fails. */
     suspend fun generateReadingPassages(): String = withContext(Dispatchers.IO) {
         val apiKey = getApiKey()
-        if (apiKey.isNotBlank()) {
-            try {
-                val prompt = "Write 2 distinct, inspiring morning wake-up paragraphs (about 35-40 words each) to boost cognitive alertness upon waking up. Separate them with a line containing only '---'. Do not use bullet points or numbering."
-                return@withContext callGeminiSimple(apiKey, prompt)
-            } catch (e: Exception) {
-                // fall through to high quality defaults
-            }
-        }
-        return@withContext "The morning sun rises steadily over the quiet hills, bringing calm clarity and a fresh start. Take a deep breath, drink a glass of water, and move forward into your day with focus and intention.\n---\nEnergy and momentum are built one conscious step at a time. Clear away the distractions of yesterday and direct your mind toward the goals that truly inspire you today."
+        check(apiKey.isNotBlank()) { "No API key" }
+        val prompt = "Write 2 distinct, inspiring morning wake-up paragraphs (about 35-40 words each) to boost cognitive alertness upon waking up. Separate them with a line containing only '---'. Do not use bullet points or numbering."
+        callGeminiSimple(apiKey, prompt)
     }
 
     private fun callGeminiSimple(apiKey: String, prompt: String): String {
-        val models = listOf(DEFAULT_MODEL, "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash").distinct()
+        val models = listOf(DEFAULT_MODEL, "gemini-2.5-flash").distinct()
         for (model in models) {
             try {
-                val urlString = "https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey"
+                val urlString = "https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent"
                 val conn = URL(urlString).openConnection() as HttpURLConnection
+                conn.setRequestProperty("x-goog-api-key", apiKey)
                 conn.requestMethod = "POST"
                 conn.setRequestProperty("Content-Type", "application/json")
                 conn.connectTimeout = 12000
