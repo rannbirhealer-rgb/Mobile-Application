@@ -33,8 +33,10 @@ class PinSecurityTest {
     fun `the stored value is not the pin`() {
         val salt = PinSecurity.newSalt()
         val stored = PinSecurity.hash("4821", salt)
+        // A fixed, long, non-reversible value, never the digits themselves. (No substring check: a
+        // random 64-digit hex string can contain "4821" by chance and would make the test flaky.)
         assertNotEquals("4821", stored)
-        assertFalse(stored.contains("4821"))
+        assertEquals(64, stored.length)
     }
 
     @Test

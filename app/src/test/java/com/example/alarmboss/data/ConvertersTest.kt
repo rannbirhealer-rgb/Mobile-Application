@@ -34,4 +34,32 @@ class ConvertersTest {
     fun `blank string loads as an empty set`() {
         assertTrue(converters.toTaskSet("").isEmpty())
     }
+
+    @Test
+    fun `an unknown task name is dropped and the rest still load`() {
+        // What a newer build's extra task looks like to an older one, or a hand-edited backup.
+        assertEquals(
+            setOf(MediumTaskType.MATH, MediumTaskType.READING),
+            converters.toTaskSet("MATH,TELEPORT,READING")
+        )
+    }
+
+    @Test
+    fun `a stored set of only unknown tasks loads empty instead of crashing`() {
+        assertTrue(converters.toTaskSet("TELEPORT,").isEmpty())
+    }
+
+    @Test
+    fun `repeat days ignore anything that is not a number`() {
+        assertEquals(setOf(1, 3, 5), converters.toIntSet("1, 3,x,,5"))
+        assertTrue(converters.toIntSet("").isEmpty())
+    }
+
+    @Test
+    fun `an unknown mode falls back to easy and an unknown exercise to squats`() {
+        assertEquals(AlarmMode.EASY, converters.toMode("NIGHTMARE"))
+        assertEquals(AlarmMode.STRICT, converters.toMode("STRICT"))
+        assertEquals(ExerciseType.SQUATS, converters.toExerciseType("PUSHUPS"))
+        assertEquals(ExerciseType.JUMPING_JACKS, converters.toExerciseType("JUMPING_JACKS"))
+    }
 }
