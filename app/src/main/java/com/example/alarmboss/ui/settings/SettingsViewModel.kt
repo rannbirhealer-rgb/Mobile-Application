@@ -13,6 +13,8 @@ import com.example.alarmboss.util.AccessibilitySettings
 import com.example.alarmboss.util.FollowUpSettings
 import com.example.alarmboss.util.HolidaySettings
 import com.example.alarmboss.util.SnoozeSettings
+import com.example.alarmboss.util.ThemeMode
+import com.example.alarmboss.util.ThemeSettings
 import com.example.alarmboss.util.SoundSettings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -72,6 +74,16 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     private val _backupMinutes = MutableStateFlow(followUpSettings.backupMinutes)
     val backupMinutes: StateFlow<Int> = _backupMinutes
+
+    private val themeSettings = ThemeSettings(application)
+
+    private val _themeMode = MutableStateFlow(themeSettings.mode)
+    val themeMode: StateFlow<ThemeMode> = _themeMode
+
+    fun setThemeMode(mode: ThemeMode) {
+        themeSettings.mode = mode
+        _themeMode.value = mode
+    }
 
     private val holidaySettings = HolidaySettings(application)
     private val rescheduler = AlarmRescheduler(application, (application as AlarmBossApp).repository)

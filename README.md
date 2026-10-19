@@ -38,6 +38,10 @@ Every alarm you actually wake up to earns XP, so mornings become a game you can 
 - **Wake-up check.** After a Medium or Strict alarm is completed, it rings again after 5, 10 or 15 minutes (your choice in Settings) with a quick challenge, because the commonest failure is passing the task and going back to sleep. It is always on for Medium and Strict alarms, can be switched on for an Easy alarm individually, and can be applied to every non-Easy alarm in Settings.
 - **Backup alarm (optional).** If an alarm isn't completed, it rings again after 5, 10 or 15 minutes. Completing, snoozing or stopping the alarm cancels the backup.
 
+## 🎨 Appearance
+
+The original purple colour scheme, in **System default**, **Light** or **Dark**. Pick one under Settings, Appearance; the choice applies at once to every screen, including the ringing screen, and the status and navigation bar icons follow it.
+
 ## ♿ Accessibility
 
 - **Puzzle instead of a workout.** A Strict alarm set to a physical exercise offers a mental puzzle in its place for the same reward.

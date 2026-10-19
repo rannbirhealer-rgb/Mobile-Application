@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.alarmboss.R
 import com.example.alarmboss.util.SnoozeSettings
+import com.example.alarmboss.util.ThemeMode
 import android.content.Context
 import android.content.Intent
 import androidx.compose.material.icons.filled.FamilyRestroom
@@ -42,6 +43,7 @@ fun SettingsScreen(
     val parentManager = remember { ParentModeManager(context) }
 
     val snoozeMinutes by viewModel.snoozeMinutes.collectAsState()
+    val themeMode by viewModel.themeMode.collectAsState()
     val passagesText by viewModel.passagesText.collectAsState()
     val lyricsText by viewModel.lyricsText.collectAsState()
     val barcodeText by viewModel.barcodeText.collectAsState()
@@ -215,6 +217,54 @@ fun SettingsScreen(
                             Text(stringResource(R.string.settings_privacy_audio), style = MaterialTheme.typography.bodySmall)
                             Text(stringResource(R.string.settings_privacy_device), style = MaterialTheme.typography.bodySmall)
                             Text(stringResource(R.string.settings_privacy_online), style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+            }
+
+            // Appearance Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        stringResource(R.string.settings_theme_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        stringResource(R.string.settings_theme_body),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Row(
+                        Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        ThemeMode.values().forEach { option ->
+                            FilterChip(
+                                selected = themeMode == option,
+                                onClick = { viewModel.setThemeMode(option) },
+                                label = {
+                                    Text(
+                                        stringResource(
+                                            when (option) {
+                                                ThemeMode.SYSTEM -> R.string.settings_theme_system
+                                                ThemeMode.LIGHT -> R.string.settings_theme_light
+                                                ThemeMode.DARK -> R.string.settings_theme_dark
+                                            }
+                                        ),
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                },
+                                shape = RoundedCornerShape(10.dp)
+                            )
                         }
                     }
                 }
