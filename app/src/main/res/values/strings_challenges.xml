@@ -55,7 +55,6 @@
     <!-- Step counter -->
     <string name="steps_title">Take %1$d steps to dismiss</string>
     <string name="steps_hint">Get out of bed and walk around. Keep your phone with you.</string>
-    <string name="steps_progress">%1$d / %2$d steps</string>
     <string name="steps_completed">Target reached! You are now awake.</string>
     <string name="steps_permission_required">Physical activity permission is needed to detect steps.</string>
 

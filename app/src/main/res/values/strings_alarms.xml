@@ -48,7 +48,6 @@
     <!-- Alarm editor -->
     <string name="edit_title_new">New alarm</string>
     <string name="edit_title_edit">Edit alarm</string>
-    <string name="edit_time">Time: %1$s</string>
     <string name="edit_label">Label</string>
     <string name="edit_repeat">Repeat</string>
     <string name="edit_mode">Mode</string>

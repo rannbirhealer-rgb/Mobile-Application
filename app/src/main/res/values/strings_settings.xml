@@ -19,5 +19,4 @@
     <string name="stopwatch_pause">Pause</string>
     <string name="stopwatch_lap">Lap</string>
     <string name="stopwatch_reset">Reset</string>
-    <string name="stopwatch_lap_row">Lap %1$d: %2$s</string>
 </resources>

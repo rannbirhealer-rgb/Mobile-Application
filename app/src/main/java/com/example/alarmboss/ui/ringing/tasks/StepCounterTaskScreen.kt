@@ -7,7 +7,6 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
-import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
@@ -35,11 +34,7 @@ fun StepCounterTaskScreen(difficulty: Int, onSolved: () -> Unit) {
 
     var hasPermission by remember {
         mutableStateOf(
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                ContextCompat.checkSelfPermission(context, Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED
-            } else {
-                true
-            }
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED
         )
     }
 
@@ -50,7 +45,7 @@ fun StepCounterTaskScreen(difficulty: Int, onSolved: () -> Unit) {
     }
 
     LaunchedEffect(Unit) {
-        if (!hasPermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        if (!hasPermission) {
             permissionLauncher.launch(Manifest.permission.ACTIVITY_RECOGNITION)
         }
     }
@@ -163,7 +158,7 @@ fun StepCounterTaskScreen(difficulty: Int, onSolved: () -> Unit) {
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary
             )
-        } else if (!hasPermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        } else if (!hasPermission) {
             Text(
                 text = stringResource(R.string.steps_permission_required),
                 style = MaterialTheme.typography.bodySmall,

@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -69,6 +70,7 @@ fun AlarmListScreen(
     viewModel: AlarmViewModel = viewModel()
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val parentManager = remember { ParentModeManager(context) }
     val alarms by viewModel.alarms.collectAsState()
     val currentStreak by viewModel.streak.collectAsState(initial = 0)
@@ -76,7 +78,7 @@ fun AlarmListScreen(
     val holidayPrompt by viewModel.holidayPrompt.collectAsState()
 
     var showTemplatesSheet by remember { mutableStateOf(false) }
-    val templateApplied = { label: String -> context.getString(R.string.alarms_template_applied, label) }
+    val templateApplied = { label: String -> resources.getString(R.string.alarms_template_applied, label) }
 
     // Parent PIN verification dialog state
     var showPinDialog by remember { mutableStateOf(false) }
@@ -213,6 +215,7 @@ fun AlarmListScreen(
                 .padding(padding)
         ) {
             ExactAlarmPermissionBanner()
+            NotificationAccessBanner()
             BatteryOptimizationBanner()
 
             // Parent Mode Status Banner if active
@@ -375,7 +378,6 @@ fun AlarmListScreen(
 
 @Composable
 private fun ExactAlarmPermissionBanner() {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
     val context = LocalContext.current
     val alarmManager = remember { context.getSystemService(Context.ALARM_SERVICE) as AlarmManager }
 

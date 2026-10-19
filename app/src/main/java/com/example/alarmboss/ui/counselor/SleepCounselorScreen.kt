@@ -32,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -47,6 +48,7 @@ import java.util.Locale
 @Composable
 fun SleepCounselorScreen() {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val scope = rememberCoroutineScope()
     val engine = remember { SleepCounselorEngine(context) }
 
@@ -54,7 +56,7 @@ fun SleepCounselorScreen() {
         mutableStateListOf(
             ChatMessage(
                 sender = MessageSender.COUNSELOR,
-                text = context.getString(R.string.counselor_greeting)
+                text = resources.getString(R.string.counselor_greeting)
             )
         )
     }
@@ -175,15 +177,15 @@ fun SleepCounselorScreen() {
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 SuggestionChip(
-                    onClick = { sendMessage(context.getString(R.string.counselor_q_schedule)) },
+                    onClick = { sendMessage(resources.getString(R.string.counselor_q_schedule)) },
                     label = { Text(stringResource(R.string.counselor_chip_schedule), fontSize = 12.sp) }
                 )
                 SuggestionChip(
-                    onClick = { sendMessage(context.getString(R.string.counselor_q_caffeine)) },
+                    onClick = { sendMessage(resources.getString(R.string.counselor_q_caffeine)) },
                     label = { Text(stringResource(R.string.counselor_chip_caffeine), fontSize = 12.sp) }
                 )
                 SuggestionChip(
-                    onClick = { sendMessage(context.getString(R.string.counselor_q_screens)) },
+                    onClick = { sendMessage(resources.getString(R.string.counselor_q_screens)) },
                     label = { Text(stringResource(R.string.counselor_chip_screens), fontSize = 12.sp) }
                 )
             }

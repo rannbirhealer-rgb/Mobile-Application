@@ -46,7 +46,6 @@
         <item quantity="other">Too many wrong tries. Try again in %1$d seconds.</item>
     </plurals>
     <string name="parent_pin_forgot">Forgot the PIN? Clear AlarmBoss\'s storage in Android Settings under Apps. That also deletes your alarms.</string>
-    <string name="parent_pin_skip_message">Parent Mode is active. Enter your PIN to skip alarms on this holiday.</string>
     <string name="parent_pin_stop_message">Parent Mode is active. Enter your PIN to stop this alarm without completing its challenge.</string>
 
     <string name="parent_card_title">Parent Mode (Ages 9-12)</string>

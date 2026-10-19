@@ -86,9 +86,7 @@ private fun RequestRuntimePermissions() {
     // the alarm's full-screen notification can post at all.
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
     LaunchedEffect(Unit) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
+        launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 }
 
