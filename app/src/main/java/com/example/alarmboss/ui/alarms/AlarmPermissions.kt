@@ -11,6 +11,8 @@ import com.example.alarmboss.data.StrictExerciseCategory
  *
  * Camera has no fallback (barcode scanning and the physical Strict workout), so it matters most.
  * The microphone only powers voice answers, and the reading and lyrics tasks accept typing instead.
+ * Step counting needs activity recognition for the hardware step sensor, but falls back to the motion
+ * sensor without it, so a refusal never traps anyone.
  */
 fun requiredPermissions(
     mode: AlarmMode,
@@ -20,6 +22,7 @@ fun requiredPermissions(
     AlarmMode.EASY -> emptySet()
     AlarmMode.MEDIUM -> buildSet {
         if (MediumTaskType.BARCODE in enabledTasks) add(Manifest.permission.CAMERA)
+        if (MediumTaskType.STEPS in enabledTasks) add(Manifest.permission.ACTIVITY_RECOGNITION)
         if (MediumTaskType.READING in enabledTasks || MediumTaskType.LYRICS in enabledTasks) {
             add(Manifest.permission.RECORD_AUDIO)
         }

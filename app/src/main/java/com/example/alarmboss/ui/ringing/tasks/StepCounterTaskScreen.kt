@@ -55,9 +55,12 @@ fun StepCounterTaskScreen(difficulty: Int, onSolved: () -> Unit) {
         }
     }
 
-    DisposableEffect(Unit) {
+    // Re-registers when the permission answer arrives. The hardware step detector delivers nothing
+    // until activity recognition is granted, so a refusal (or a slow answer) would leave the counter
+    // stuck at zero; without it the motion sensor below counts instead.
+    DisposableEffect(hasPermission) {
         val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
-        val stepDetector = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR)
+        val stepDetector = if (hasPermission) sensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR) else null
         val accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
 
         var lastStepTime = 0L
