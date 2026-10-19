@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
@@ -38,16 +39,21 @@ import com.example.alarmboss.ui.stats.StatsViewModel
 import com.example.alarmboss.ui.stopwatch.StopwatchScreen
 import com.example.alarmboss.ui.theme.AlarmBossTheme
 import kotlinx.coroutines.launch
+import androidx.compose.material.icons.filled.Spa
+import com.example.alarmboss.ui.counselor.SleepCounselorScreen
+import com.example.alarmboss.ui.parent.ParentModeScreen
 
 private object Routes {
     const val MAIN = "main"
     const val EDIT = "edit"
+    const val PARENT_MODE = "parent_mode"
 }
 
-/** The four top-level screens, in the order they sit in the pager and the bottom bar. */
+/** The five top-level screens, in the order they sit in the pager and the bottom bar. */
 private enum class Tab(val labelRes: Int, val icon: ImageVector) {
     ALARMS(R.string.nav_alarms, Icons.Default.Alarm),
     STATS(R.string.nav_stats, Icons.Default.EmojiEvents),
+    COUNSELOR(R.string.nav_counselor, Icons.Default.Spa),
     STOPWATCH(R.string.nav_stopwatch, Icons.Default.Timer),
     SETTINGS(R.string.nav_settings, Icons.Default.Settings)
 }
@@ -94,7 +100,8 @@ private fun AlarmBossRoot() {
         composable(Routes.MAIN) {
             MainTabs(
                 onAddAlarm = { navController.navigate("${Routes.EDIT}/new") },
-                onEditAlarm = { id -> navController.navigate("${Routes.EDIT}/$id") }
+                onEditAlarm = { id -> navController.navigate("${Routes.EDIT}/$id") },
+                onOpenParentMode = { navController.navigate(Routes.PARENT_MODE) }
             )
         }
         composable("${Routes.EDIT}/{alarmId}") { backStackEntry ->
@@ -102,16 +109,23 @@ private fun AlarmBossRoot() {
             val alarmId = idArg?.toLongOrNull()
             AlarmEditScreen(alarmId = alarmId, onDone = { navController.popBackStack() })
         }
+        composable(Routes.PARENT_MODE) {
+            ParentModeScreen(onBack = { navController.popBackStack() })
+        }
     }
 }
 
 /**
- * The four top-level screens as swipeable pages. The bottom bar and the pager share one
+ * The five top-level screens as swipeable pages. The bottom bar and the pager share one
  * [androidx.compose.foundation.pager.PagerState], so tapping a tab and swiping stay in sync, and
  * every page stays composed, so each keeps its scroll position and state while you move around.
  */
 @Composable
-private fun MainTabs(onAddAlarm: () -> Unit, onEditAlarm: (Long) -> Unit) {
+private fun MainTabs(
+    onAddAlarm: () -> Unit,
+    onEditAlarm: (Long) -> Unit,
+    onOpenParentMode: () -> Unit
+) {
     val tabs = Tab.entries
     val pagerState = rememberPagerState { tabs.size }
     val scope = rememberCoroutineScope()
@@ -123,13 +137,30 @@ private fun MainTabs(onAddAlarm: () -> Unit, onEditAlarm: (Long) -> Unit) {
 
     Scaffold(
         bottomBar = {
-            NavigationBar {
+            NavigationBar(
+                containerColor = MaterialTheme.colorScheme.surface,
+                tonalElevation = 8.dp
+            ) {
                 tabs.forEachIndexed { index, tab ->
+                    val isSelected = pagerState.currentPage == index
                     NavigationBarItem(
-                        selected = pagerState.currentPage == index,
+                        selected = isSelected,
                         onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
                         icon = { Icon(tab.icon, contentDescription = stringResource(tab.labelRes)) },
-                        label = { Text(stringResource(tab.labelRes)) }
+                        label = { 
+                            Text(
+                                stringResource(tab.labelRes),
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = if (isSelected) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal
+                            ) 
+                        },
+                        colors = NavigationBarItemDefaults.colors(
+                            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
                     )
                 }
             }
@@ -141,7 +172,11 @@ private fun MainTabs(onAddAlarm: () -> Unit, onEditAlarm: (Long) -> Unit) {
             beyondViewportPageCount = tabs.size - 1
         ) { page ->
             when (tabs[page]) {
-                Tab.ALARMS -> AlarmListScreen(onAddAlarm = onAddAlarm, onEditAlarm = onEditAlarm)
+                Tab.ALARMS -> AlarmListScreen(
+                    onAddAlarm = onAddAlarm,
+                    onEditAlarm = onEditAlarm,
+                    onOpenParentMode = onOpenParentMode
+                )
                 Tab.STATS -> {
                     val app = LocalContext.current.applicationContext as AlarmBossApp
                     val statsViewModel: StatsViewModel = viewModel(
@@ -149,8 +184,9 @@ private fun MainTabs(onAddAlarm: () -> Unit, onEditAlarm: (Long) -> Unit) {
                     )
                     StatsScreen(statsViewModel)
                 }
+                Tab.COUNSELOR -> SleepCounselorScreen()
                 Tab.STOPWATCH -> StopwatchScreen()
-                Tab.SETTINGS -> SettingsScreen()
+                Tab.SETTINGS -> SettingsScreen(onOpenParentMode = onOpenParentMode)
             }
         }
     }

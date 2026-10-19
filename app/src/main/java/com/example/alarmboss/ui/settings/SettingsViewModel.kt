@@ -99,6 +99,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _lyricsText = MutableStateFlow("")
     val lyricsText: StateFlow<String> = _lyricsText
 
+    private val counselorEngine = com.example.alarmboss.counselor.SleepCounselorEngine(application)
+    private val _isGeneratingPassages = MutableStateFlow(false)
+    val isGeneratingPassages: StateFlow<Boolean> = _isGeneratingPassages
+
+    private val _barcodeText = MutableStateFlow("")
+    val barcodeText: StateFlow<String> = _barcodeText
+
     init {
         application.getSharedPreferences("alarm_boss_settings", Context.MODE_PRIVATE)
             .registerOnSharedPreferenceChangeListener(skipListener)
@@ -107,6 +114,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             _passagesText.value = formatPassages(store.readingPassages.first())
             _lyricsText.value = formatLyrics(store.lyricLines.first())
+            _barcodeText.value = store.getRegisteredBarcode() ?: ""
         }
     }
 
@@ -200,6 +208,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun onPassagesChange(text: String) { _passagesText.value = text }
     fun onLyricsChange(text: String) { _lyricsText.value = text }
+    fun onBarcodeChange(text: String) { _barcodeText.value = text }
 
     fun savePassages() {
         val passages = parsePassages(_passagesText.value)
@@ -209,5 +218,23 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun saveLyrics() {
         val lines = parseLyrics(_lyricsText.value)
         viewModelScope.launch { store.setLyricLines(lines) }
+    }
+
+    fun saveBarcode() {
+        viewModelScope.launch { store.setRegisteredBarcode(_barcodeText.value) }
+    }
+
+    fun generatePassagesWithGemini() {
+        if (_isGeneratingPassages.value) return
+        viewModelScope.launch {
+            _isGeneratingPassages.value = true
+            try {
+                val generated = counselorEngine.generateReadingPassages()
+                _passagesText.value = generated
+                savePassages()
+            } finally {
+                _isGeneratingPassages.value = false
+            }
+        }
     }
 }

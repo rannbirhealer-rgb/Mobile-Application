@@ -8,6 +8,18 @@
     <string name="ringing_default_label">Alarm</string>
     <string name="ringing_dismiss">Dismiss</string>
     <string name="ringing_snooze">Snooze %1$d min</string>
+    <string name="snooze_penalty_hint">Snooze (-15 XP &amp; Boss Enraged)</string>
+
+    <!-- Morning Quest Celebration -->
+    <string name="morning_quest_title">Morning Victory Wins</string>
+    <string name="morning_quest_subtitle">Start your day right and claim +25 XP each!</string>
+    <string name="morning_quest_water">Drink a full glass of water</string>
+    <string name="morning_quest_bed">Make your bed</string>
+    <string name="morning_quest_stretch">1-minute morning stretch</string>
+    <string name="morning_quest_claim">Claim +%1$d Bonus XP &amp; Start Day</string>
+    <string name="morning_quest_skip">Skip to Day</string>
+
+    <!-- Wake-up check -->
 
     <!-- Notification shown while an alarm rings, and its channel -->
     <string name="notification_tap_to_open">Tap to open</string>

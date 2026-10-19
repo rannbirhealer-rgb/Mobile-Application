@@ -9,7 +9,7 @@ import java.time.LocalDateTime
 
 enum class AlarmMode { EASY, MEDIUM, STRICT }
 
-enum class MediumTaskType { MATH, READING, LYRICS, BARCODE, PATTERN_LOCK, WORD_SCRAMBLE }
+enum class MediumTaskType { MATH, READING, LYRICS, BARCODE, PATTERN_LOCK, WORD_SCRAMBLE, STEPS }
 
 // Add these enums for Strict Mode categorization
 enum class StrictExerciseCategory { PHYSICAL, MENTAL }
@@ -36,10 +36,20 @@ data class Alarm @JvmOverloads constructor(
     // Add these fields referenced in AlarmRingingActivity
     val strictCategory: StrictExerciseCategory = StrictExerciseCategory.PHYSICAL,
     val mentalExerciseType: MentalExerciseType = MentalExerciseType.MEMORY_GRID,
+    val dynamicBrightness: Boolean = false,
+    val flashLightBlink: Boolean = false,
+    val gradualVolume: Boolean = false,
+    val sunriseMode: Boolean = false,
+    val wakeCheck: Boolean = false,
+    val morningBriefing: Boolean = false,
 
     /** ISO date (yyyy-MM-dd) for an alarm that rings once on that day; null for ordinary alarms. */
     val specificDate: String? = null
-)
+) {
+    /** In Medium and Strict modes, the safeguard awake check is locked and always active. */
+    val isWakeCheckEffective: Boolean
+        get() = mode == AlarmMode.MEDIUM || mode == AlarmMode.STRICT || wakeCheck
+}
 
 /** [Alarm.specificDate] as a date, or null if absent or unreadable. */
 fun Alarm.specificLocalDate(): LocalDate? =

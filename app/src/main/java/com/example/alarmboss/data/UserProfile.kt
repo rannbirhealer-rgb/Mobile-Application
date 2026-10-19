@@ -14,5 +14,7 @@ data class UserProfile(
     val bossesDefeated: Int = 0,
     val lastWakeDate: String? = null,
     val bedtimeGoal: String? = null,
-    val averageReactionMs: Long = 0
+    val averageReactionMs: Long = 0,
+    val unlockedAvatars: String = "ROOKIE",
+    val selectedAvatar: String = "ROOKIE"
 )

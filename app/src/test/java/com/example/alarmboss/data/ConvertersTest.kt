@@ -16,8 +16,8 @@ class ConvertersTest {
 
     @Test
     fun `new task types are part of the stored set`() {
-        val stored = converters.fromTaskSet(setOf(MediumTaskType.PATTERN_LOCK, MediumTaskType.WORD_SCRAMBLE))
-        assertEquals(setOf(MediumTaskType.PATTERN_LOCK, MediumTaskType.WORD_SCRAMBLE), converters.toTaskSet(stored))
+        val stored = converters.fromTaskSet(setOf(MediumTaskType.PATTERN_LOCK, MediumTaskType.WORD_SCRAMBLE, MediumTaskType.STEPS))
+        assertEquals(setOf(MediumTaskType.PATTERN_LOCK, MediumTaskType.WORD_SCRAMBLE, MediumTaskType.STEPS), converters.toTaskSet(stored))
     }
 
     @Test

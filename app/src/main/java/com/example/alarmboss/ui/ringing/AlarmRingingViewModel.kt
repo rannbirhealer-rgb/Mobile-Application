@@ -72,6 +72,9 @@ class AlarmRingingViewModel(application: Application) : AndroidViewModel(applica
         if (firstTouchAt == 0L) firstTouchAt = System.currentTimeMillis()
     }
 
+    var lastWakeResult: StreakManager.StreakResult? = null
+        private set
+
     /**
      * The user swapped a Strict workout for puzzles. The wake-up still counts, but is scored as the
      * mental challenge it actually was, so switching can't earn the larger physical-workout XP.
@@ -94,7 +97,10 @@ class AlarmRingingViewModel(application: Application) : AndroidViewModel(applica
         // XP, no event, and it must not queue another check behind itself.
         if (_session.value?.isWakeCheck == true) return true
 
-        val newStreak = streakManager.recordSuccessfulWakeUp()
+        val nowTime = java.time.LocalTime.now()
+        val streakResult = streakManager.recordSuccessfulWakeUpDetailed(today = LocalDate.now(), time = nowTime)
+        lastWakeResult = streakResult
+        val newStreak = streakResult.currentStreak
         val session = _session.value ?: return true
         scheduleWakeCheckIfEnabled(session.alarm)
         val profile = profileSnapshot ?: return true
@@ -129,18 +135,22 @@ class AlarmRingingViewModel(application: Application) : AndroidViewModel(applica
         )
 
         // App scope, not viewModelScope: the screen finishes right after this and would cancel it.
+        // The next occurrence (or switching a one-off off) is settled when the alarm starts ringing,
+        // by AlarmService, so it survives the screen or process dying mid-ring; nothing to redo here.
         app.appScope.launch { profileRepository.recordWakeUp(event, outcome.profile) }
         return true
     }
 
     /**
-     * The commonest way a strict alarm fails: you pass the task, then go straight back to sleep. If
-     * the wake-up check is on, ring again shortly after with a quick challenge. Easy alarms are
-     * excluded: their whole contract is a one-tap dismiss.
+     * The commonest way a strict alarm fails: you pass the task, then go straight back to sleep. When
+     * the wake-up check applies, ring again shortly after with a quick challenge. It applies to an
+     * alarm that asks for it, to every Medium and Strict alarm, and to every non-Easy alarm when the
+     * global setting is on. An Easy alarm only gets one if that alarm opted in.
      */
     private fun scheduleWakeCheckIfEnabled(alarm: Alarm) {
         val settings = FollowUpSettings(app)
-        if (alarm.mode == AlarmMode.EASY || !settings.wakeCheckEnabled) return
+        val applies = alarm.isWakeCheckEffective || (settings.wakeCheckEnabled && alarm.mode != AlarmMode.EASY)
+        if (!applies) return
         AlarmScheduler(app).scheduleFollowUp(alarm.id, FollowUp.WAKE_CHECK, settings.wakeCheckMinutes)
     }
 
@@ -157,12 +167,32 @@ class AlarmRingingViewModel(application: Application) : AndroidViewModel(applica
         return true
     }
 
-    /** Only offered in Easy mode: re-fires the alarm after the chosen snooze length. */
+    /** Only offered in Easy mode: re-fires the alarm after the chosen snooze length, with a snooze XP penalty. */
     fun snooze() {
         val session = _session.value ?: return
         // The snooze is itself the next ring; a backup on top of it would ring twice.
         cancelBackup()
         AlarmScheduler(app).scheduleOneOffInMinutes(session.alarm, session.snoozeMinutes)
+        app.appScope.launch {
+            val currentProfile = profileRepository.getProfile()
+            val penalizedProfile = currentProfile.copy(
+                totalXp = kotlin.math.max(0, currentProfile.totalXp - 15)
+            )
+            profileRepository.updateProfile(penalizedProfile)
+        }
+    }
+
+    fun addQuestBonusXp(bonusXp: Int) {
+        if (bonusXp <= 0) return
+        app.appScope.launch {
+            val currentProfile = profileRepository.getProfile()
+            val newTotalXp = currentProfile.totalXp + bonusXp
+            val updated = currentProfile.copy(
+                totalXp = newTotalXp,
+                level = com.example.alarmboss.engine.XpEngine.calculateLevel(newTotalXp)
+            )
+            profileRepository.updateProfile(updated)
+        }
     }
 
     /** The ring is being ended on purpose, so the safety-net ring behind it is no longer needed. */

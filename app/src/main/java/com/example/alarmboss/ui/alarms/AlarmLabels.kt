@@ -40,6 +40,7 @@ fun taskName(task: MediumTaskType): String = stringResource(
         MediumTaskType.BARCODE -> R.string.medium_task_barcode
         MediumTaskType.PATTERN_LOCK -> R.string.medium_task_pattern_lock
         MediumTaskType.WORD_SCRAMBLE -> R.string.medium_task_word_scramble
+        MediumTaskType.STEPS -> R.string.medium_task_steps
     }
 )
 

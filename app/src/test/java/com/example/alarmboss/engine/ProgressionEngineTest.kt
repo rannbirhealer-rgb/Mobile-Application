@@ -64,4 +64,13 @@ class ProgressionEngineTest {
         val outcome = wake(UserProfile(totalWakeUps = 3, averageReactionMs = 2_000), newStreak = 4, reaction = 10_000)
         assertEquals(4_000, outcome.profile.averageReactionMs)
     }
+
+    @Test
+    fun `avatar badges unlock when level requirements are met`() {
+        val outcome = wake(UserProfile(totalXp = 40, level = 1), newStreak = 1)
+        assertEquals(2, outcome.profile.level)
+        val avatars = outcome.profile.unlockedAvatars.split(",")
+        org.junit.Assert.assertTrue(avatars.contains("ROOKIE"))
+        org.junit.Assert.assertTrue(avatars.contains("WARRIOR"))
+    }
 }

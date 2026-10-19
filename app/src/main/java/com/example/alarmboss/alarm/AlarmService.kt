@@ -70,8 +70,17 @@ class AlarmService : Service() {
 
     private fun startRinging(alarmId: Long, followUp: FollowUp?) {
         val app = application as AlarmBossApp
+        // startForegroundService() obliges us to call startForeground() within seconds or the system
+        // kills the app, so promote before the database lookup, and even if the alarm is gone.
+        startForeground(NOTIFICATION_ID, buildNotification(getString(R.string.ringing_default_label), null))
         scope.launch {
-            val alarm = app.repository.getAlarm(alarmId) ?: return@launch
+            val alarm = app.repository.getAlarm(alarmId)
+            if (alarm == null) {
+                // Deleted between scheduling and ringing: nothing to ring for.
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf()
+                return@launch
+            }
 
             // A follow-up ring is an extra on top of an alarm whose own schedule was already settled
             // when it first rang, so only a primary ring decides what comes next.
@@ -95,6 +104,9 @@ class AlarmService : Service() {
 
             val fullScreenIntent = Intent(this@AlarmService, AlarmRingingActivity::class.java).apply {
                 putExtra(AlarmReceiver.EXTRA_ALARM_ID, alarmId)
+                putExtra(AlarmRingingActivity.EXTRA_DYNAMIC_BRIGHTNESS, alarm.dynamicBrightness)
+                putExtra(AlarmRingingActivity.EXTRA_SUNRISE_MODE, alarm.sunriseMode)
+                putExtra(AlarmRingingActivity.EXTRA_MORNING_BRIEFING, alarm.morningBriefing)
                 followUp?.let { putExtra(AlarmReceiver.EXTRA_FOLLOW_UP, it.name) }
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
@@ -103,38 +115,45 @@ class AlarmService : Service() {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 
-            val notification: Notification = NotificationCompat.Builder(this@AlarmService, AlarmBossApp.CHANNEL_ALARM)
-                .setSmallIcon(R.drawable.ic_launcher_foreground)
-                .setContentTitle(
-                    if (followUp == FollowUp.WAKE_CHECK) getString(R.string.wake_check_title)
-                    else alarm.label.ifBlank { getString(R.string.ringing_default_label) }
-                )
-                .setContentText(getString(R.string.notification_tap_to_open))
-                .setPriority(NotificationCompat.PRIORITY_MAX)
-                .setCategory(NotificationCompat.CATEGORY_ALARM)
-                .setFullScreenIntent(fullScreenPendingIntent, true)
-                .setContentIntent(fullScreenPendingIntent)
-                .setOngoing(true)
-                .build()
+            val title = if (followUp == FollowUp.WAKE_CHECK) getString(R.string.wake_check_title)
+            else alarm.label.ifBlank { getString(R.string.ringing_default_label) }
+            val notification = buildNotification(title, fullScreenPendingIntent)
 
             startForeground(NOTIFICATION_ID, notification)
             startActivity(fullScreenIntent)
 
             val accessibility = AccessibilitySettings(this@AlarmService)
             val feedback = AlarmFeedbackPlanner.plan(alarm.vibrate, accessibility.silentMode)
-            if (feedback.sound) playSound(alarm.soundUri)
+            if (feedback.sound) playSound(alarm.soundUri, alarm.gradualVolume)
             if (feedback.vibrate) startVibration()
-            if (accessibility.flash) torch.start()
+            if (accessibility.flash || alarm.flashLightBlink) torch.start()
         }
     }
 
-    private fun playSound(soundUri: String?) {
+    private fun buildNotification(title: String, fullScreen: PendingIntent?): Notification =
+        NotificationCompat.Builder(this, AlarmBossApp.CHANNEL_ALARM)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentTitle(title)
+            .setContentText(getString(R.string.notification_tap_to_open))
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setOngoing(true)
+            .apply {
+                if (fullScreen != null) {
+                    setFullScreenIntent(fullScreen, true)
+                    setContentIntent(fullScreen)
+                }
+            }
+            .build()
+
+    private fun playSound(soundUri: String?, alarmFadeIn: Boolean) {
         stopMediaPlayer()
         val sound = SoundSettings(this)
         raiseSystemVolumeIfEnabled(sound)
 
+        val gradual = sound.gradual || alarmFadeIn
         val target = sound.loudnessPercent / 100f
-        val startVolume = if (sound.gradual) VolumeRamp.volumeAt(0, VolumeRamp.RAMP_MS, target) else target
+        val startVolume = if (gradual) VolumeRamp.volumeAt(0, VolumeRamp.RAMP_MS, target) else target
         try {
             val uri = soundUri?.let { Uri.parse(it) }
                 ?: android.media.RingtoneManager.getActualDefaultRingtoneUri(
@@ -153,7 +172,7 @@ class AlarmService : Service() {
                 prepare()
                 start()
             }
-            if (sound.gradual) startVolumeRamp(target)
+            if (gradual) startVolumeRamp(target)
         } catch (e: Exception) {
             // If the custom sound URI can no longer be resolved (e.g. permission revoked),
             // fall back silently to vibration only so the alarm still wakes the user.

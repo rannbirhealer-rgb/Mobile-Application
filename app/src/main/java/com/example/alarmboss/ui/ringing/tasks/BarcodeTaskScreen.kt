@@ -14,7 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -38,7 +38,10 @@ import java.util.concurrent.Executors
 @Composable
 fun BarcodeTaskScreen(onScanned: () -> Unit) {
     val context = LocalContext.current
+    val contentStore = remember { com.example.alarmboss.data.ContentStore(context) }
+    val registeredBarcode by contentStore.registeredBarcode.collectAsState(initial = null)
     var lastSeen by remember { mutableStateOf("") }
+    var mismatchError by remember { mutableStateOf(false) }
     var hasPermission by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
@@ -58,19 +61,41 @@ fun BarcodeTaskScreen(onScanned: () -> Unit) {
     LaunchedEffect(Unit) { if (!hasPermission) permissionLauncher.launch(Manifest.permission.CAMERA) }
 
     Column(Modifier.fillMaxSize().padding(24.dp)) {
-        Text(stringResource(R.string.barcode_title), style = MaterialTheme.typography.titleMedium)
+        val hasRegistered = !registeredBarcode.isNullOrBlank()
+        Text(
+            stringResource(if (hasRegistered) R.string.barcode_title_registered else R.string.barcode_title),
+            style = MaterialTheme.typography.titleMedium
+        )
         Spacer(Modifier.height(8.dp))
         Text(
-            stringResource(R.string.barcode_hint),
+            if (hasRegistered) stringResource(R.string.barcode_custom_hint, registeredBarcode.orEmpty())
+            else stringResource(R.string.barcode_hint),
             style = MaterialTheme.typography.bodySmall
         )
+        if (mismatchError) {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                stringResource(R.string.barcode_mismatch),
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
         Spacer(Modifier.height(12.dp))
         if (hasPermission) {
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 CameraPreviewWithBarcodeScan(
                     onBarcodeDetected = { value ->
                         lastSeen = value
-                        onScanned()
+                        if (hasRegistered) {
+                            if (value.trim().equals(registeredBarcode?.trim(), ignoreCase = true)) {
+                                mismatchError = false
+                                onScanned()
+                            } else {
+                                mismatchError = true
+                            }
+                        } else {
+                            onScanned()
+                        }
                     }
                 )
             }
@@ -96,6 +121,14 @@ private fun CameraPreviewWithBarcodeScan(onBarcodeDetected: (String) -> Unit) {
     val lifecycleOwner = LocalLifecycleOwner.current
     val scanner = remember { BarcodeScanning.getClient() }
     val executor = remember { Executors.newSingleThreadExecutor() }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            executor.shutdown()
+            scanner.close()
+        }
+    }
+
     // Prevents onBarcodeDetected firing repeatedly per frame once a code is found --
     // the caller's onScanned() will navigate away, but frames in flight could still land.
     var handled by remember { mutableStateOf(false) }

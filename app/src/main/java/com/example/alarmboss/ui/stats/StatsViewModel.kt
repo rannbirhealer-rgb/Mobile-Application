@@ -10,9 +10,25 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import com.example.alarmboss.R
+
+data class AvatarBadge(
+    val id: String,
+    val nameRes: Int,
+    val minLevel: Int,
+    val emoji: String
+)
+
+val AVAILABLE_AVATARS = listOf(
+    AvatarBadge("ROOKIE", R.string.avatar_rookie, 1, "🌱"),
+    AvatarBadge("WARRIOR", R.string.avatar_warrior, 2, "⚔️"),
+    AvatarBadge("PALADIN", R.string.avatar_paladin, 5, "🛡️"),
+    AvatarBadge("OVERLORD", R.string.avatar_overlord, 10, "👑")
+)
 
 class StatsViewModel(private val profileRepository: ProfileRepository) : ViewModel() {
 
@@ -37,5 +53,19 @@ class StatsViewModel(private val profileRepository: ProfileRepository) : ViewMod
         return events.map { 
             Instant.ofEpochMilli(it.dismissedAt).atZone(ZoneId.systemDefault()).toLocalDate()
         }.toSet()
+    }
+
+    fun selectAvatar(avatarId: String) {
+        viewModelScope.launch {
+            val current = profile.value
+            val unlockedSet = current.unlockedAvatars.split(",").map { it.trim() }.filter { it.isNotEmpty() }.toMutableSet()
+            unlockedSet.add(avatarId)
+            profileRepository.updateProfile(
+                current.copy(
+                    selectedAvatar = avatarId,
+                    unlockedAvatars = unlockedSet.joinToString(",")
+                )
+            )
+        }
     }
 }

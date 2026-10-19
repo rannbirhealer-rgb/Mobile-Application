@@ -56,4 +56,21 @@ class StreakManagerTest {
         assertNull(StreakManager.parseDate(null))
         assertEquals(today, StreakManager.parseDate("2026-09-22"))
     }
+    @Test
+    fun `morning window is strictly 5 AM to 10 AM`() {
+        // Before 5 AM
+        org.junit.Assert.assertFalse(StreakManager.isMorningWindow(java.time.LocalTime.of(4, 59, 59)))
+        org.junit.Assert.assertFalse(StreakManager.isMorningWindow(java.time.LocalTime.of(3, 0, 0)))
+
+        // Strictly within 5 AM to 10 AM
+        org.junit.Assert.assertTrue(StreakManager.isMorningWindow(java.time.LocalTime.of(5, 0, 0)))
+        org.junit.Assert.assertTrue(StreakManager.isMorningWindow(java.time.LocalTime.of(6, 30, 0)))
+        org.junit.Assert.assertTrue(StreakManager.isMorningWindow(java.time.LocalTime.of(9, 59, 59)))
+        org.junit.Assert.assertTrue(StreakManager.isMorningWindow(java.time.LocalTime.of(10, 0, 0)))
+
+        // Late mornings (> 10 AM)
+        org.junit.Assert.assertFalse(StreakManager.isMorningWindow(java.time.LocalTime.of(10, 0, 1)))
+        org.junit.Assert.assertFalse(StreakManager.isMorningWindow(java.time.LocalTime.of(10, 30, 0)))
+        org.junit.Assert.assertFalse(StreakManager.isMorningWindow(java.time.LocalTime.of(14, 0, 0)))
+    }
 }

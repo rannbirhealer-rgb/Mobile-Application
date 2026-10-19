@@ -17,4 +17,12 @@
     <string name="stats_seconds">%1$ds</string>
     <string name="stats_not_available">N/A</string>
     <string name="stats_past_four_weeks">Past 4 Weeks</string>
+    <string name="stats_avatars_title">Boss Hunter Badges &amp; Avatars</string>
+    <string name="stats_avatar_equipped">Equipped</string>
+    <string name="stats_avatar_equip">Equip</string>
+    <string name="stats_avatar_locked">Unlocks at Level %1$d</string>
+    <string name="avatar_rookie">Rookie Sleeper</string>
+    <string name="avatar_warrior">Dawn Warrior</string>
+    <string name="avatar_paladin">Sun Paladin</string>
+    <string name="avatar_overlord">Alarm Overlord</string>
 </resources>

@@ -22,6 +22,7 @@
     <string name="medium_task_barcode">Scan a barcode</string>
     <string name="medium_task_pattern_lock">Memorize a pattern</string>
     <string name="medium_task_word_scramble">Unscramble words</string>
+    <string name="medium_task_steps">Walk / Step counter</string>
 
     <!-- Alarm list -->
     <string name="alarms_add_description">Add alarm</string>
@@ -64,6 +65,19 @@
     <string name="edit_sound_default">Default alarm sound</string>
     <string name="edit_sound_custom">Custom sound selected</string>
     <string name="edit_vibrate">Vibrate</string>
+    <string name="edit_dynamic_brightness">Dynamic Brightness</string>
+    <string name="edit_dynamic_brightness_description">Reduces initial screen brightness to protect your eyes, then gradually increases</string>
+    <string name="edit_flashlight_blink">Flashlight Blinking</string>
+    <string name="edit_flashlight_blink_description">Blinks the camera flashlight while the alarm is ringing</string>
+    <string name="edit_gradual_volume">Gradual Volume Ramp-Up</string>
+    <string name="edit_gradual_volume_description">Volume starts at a whisper and gently swells to full over 25 seconds</string>
+    <string name="edit_sunrise_mode">Sunrise Glow Mode</string>
+    <string name="edit_sunrise_mode_description">Displays a warm sunrise glow animation to naturally wake your eyes</string>
+    <string name="edit_wake_check">Post-Wake-Up Check</string>
+    <string name="edit_wake_check_description">Rings again a few minutes after you finish, with a quick challenge, so you cannot dismiss it and fall back asleep</string>
+    <string name="edit_wake_check_locked">🔒 Always on for %1$s mode. The alarm rings again a few minutes after you finish, with a quick challenge.</string>
+    <string name="edit_morning_briefing">Voice Morning Briefing</string>
+    <string name="edit_morning_briefing_description">Speaks the time, your streak, and a morning motivational boost upon wake-up</string>
     <string name="edit_camera_warning_title">Camera access needed</string>
     <string name="edit_camera_warning_body">This alarm\'s challenge uses the camera. Without it you\'ll be asked again when the alarm rings, and may have to open Settings before you can dismiss it.</string>
     <string name="edit_camera_warning_save">Save anyway</string>

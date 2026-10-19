@@ -50,7 +50,12 @@ fun PatternLockTaskScreen(difficulty: Int, onSolved: () -> Unit) {
             if (c < size - 1) neighbors.add(current + 1)
             
             val valid = neighbors.filter { it !in pattern }
-            if (valid.isEmpty()) break
+            if (valid.isEmpty()) {
+                pattern.clear()
+                current = (0 until gridSize).random()
+                pattern.add(current)
+                continue
+            }
             
             current = valid.random()
             pattern.add(current)

@@ -81,7 +81,7 @@ class EngineTest {
         queue.add(1 to 1)
         seen[1][1] = true
         while (queue.isNotEmpty()) {
-            val (r, c) = queue.poll()
+            val (r, c) = queue.removeFirst()
             if (maze[r][c] == 3) return true
             for ((dr, dc) in listOf(-1 to 0, 1 to 0, 0 to -1, 0 to 1)) {
                 val nr = r + dr

@@ -10,6 +10,9 @@
     <string name="settings_save_passages">Save passages</string>
     <string name="settings_lyrics_title">Lyric lines (one per line)</string>
     <string name="settings_save_lyrics">Save lyrics</string>
+    <string name="settings_registered_barcode_title">Registered Barcode / QR Code (Optional)</string>
+    <string name="settings_registered_barcode_body">Enter a specific barcode number to require scanning that exact item (e.g. from your toothpaste or bathroom mirror). Leave empty to allow any barcode.</string>
+    <string name="settings_save_barcode">Save barcode</string>
 
     <!-- Stopwatch -->
     <string name="stopwatch_start">Start</string>

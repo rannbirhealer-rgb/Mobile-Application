@@ -45,9 +45,19 @@
 
     <!-- Barcode -->
     <string name="barcode_title">Scan any barcode to dismiss</string>
+    <string name="barcode_title_registered">Scan registered barcode</string>
     <string name="barcode_hint">Get up and find something with a barcode on it -- a food package, a book, a bottle, anything works. Point the camera at it.</string>
+    <string name="barcode_custom_hint">Scan your registered item (%1$s) to dismiss.</string>
+    <string name="barcode_mismatch">Barcode does not match your registered item! Try again.</string>
     <string name="barcode_last_scanned">Last scanned: %1$s</string>
     <string name="barcode_camera_required">Camera permission is required for this task.</string>
+
+    <!-- Step counter -->
+    <string name="steps_title">Take %1$d steps to dismiss</string>
+    <string name="steps_hint">Get out of bed and walk around. Keep your phone with you.</string>
+    <string name="steps_progress">%1$d / %2$d steps</string>
+    <string name="steps_completed">Target reached! You are now awake.</string>
+    <string name="steps_permission_required">Physical activity permission is needed to detect steps.</string>
 
     <!-- Reading -->
     <string name="reading_title">Read the passage below, then read the last line aloud</string>
