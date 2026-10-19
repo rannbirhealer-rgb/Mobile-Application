@@ -8,6 +8,7 @@ import android.content.Intent
 import android.media.AudioAttributes
 import android.media.AudioManager
 import android.media.MediaPlayer
+import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
 import android.os.IBinder
@@ -47,9 +48,15 @@ class AlarmService : Service() {
     private var rampJob: Job? = null
     private val torch by lazy { TorchPulser(this, scope) }
 
+    /** Alarms whose primary ring is under way; each may have queued a backup ring behind it. */
+    private val primaryRings = mutableSetOf<Long>()
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> {
+                // The ring was ended on purpose (dismissed, snoozed or stopped). Two alarms can share a
+                // minute but only one screen is shown, so clear the backup of every alarm that rang.
+                cancelPendingBackups()
                 stopRinging()
                 stopSelf()
                 return START_NOT_STICKY
@@ -85,6 +92,7 @@ class AlarmService : Service() {
             // A follow-up ring is an extra on top of an alarm whose own schedule was already settled
             // when it first rang, so only a primary ring decides what comes next.
             if (followUp == null) {
+                primaryRings += alarm.id
                 // Decide before anything else, so it still happens if the screen or process is killed
                 // mid-ring: a repeating alarm needs its next occurrence lined up (nothing else schedules
                 // it after it fires), and a one-off has done its job and must switch off.
@@ -124,8 +132,9 @@ class AlarmService : Service() {
 
             val accessibility = AccessibilitySettings(this@AlarmService)
             val feedback = AlarmFeedbackPlanner.plan(alarm.vibrate, accessibility.silentMode)
-            if (feedback.sound) playSound(alarm.soundUri, alarm.gradualVolume)
-            if (feedback.vibrate) startVibration()
+            val soundPlayed = feedback.sound && playSound(alarm.soundUri, alarm.gradualVolume)
+            // If a sound was wanted but none could play, vibrate whatever the vibration setting says.
+            if (feedback.vibrate || (feedback.sound && !soundPlayed)) startVibration()
             if (accessibility.flash || alarm.flashLightBlink) torch.start()
         }
     }
@@ -146,7 +155,8 @@ class AlarmService : Service() {
             }
             .build()
 
-    private fun playSound(soundUri: String?, alarmFadeIn: Boolean) {
+    /** Starts the alarm sound; returns false if nothing at all could be played. */
+    private fun playSound(soundUri: String?, alarmFadeIn: Boolean): Boolean {
         stopMediaPlayer()
         val sound = SoundSettings(this)
         raiseSystemVolumeIfEnabled(sound)
@@ -154,29 +164,41 @@ class AlarmService : Service() {
         val gradual = sound.gradual || alarmFadeIn
         val target = sound.loudnessPercent / 100f
         val startVolume = if (gradual) VolumeRamp.volumeAt(0, VolumeRamp.RAMP_MS, target) else target
-        try {
-            val uri = soundUri?.let { Uri.parse(it) }
-                ?: android.media.RingtoneManager.getActualDefaultRingtoneUri(
-                    this, android.media.RingtoneManager.TYPE_ALARM
-                )
-            mediaPlayer = MediaPlayer().apply {
-                setAudioAttributes(
+
+        // The chosen sound can vanish (file deleted, permission revoked, SD card removed). An alarm
+        // that plays nothing is worse than one with the wrong tune, so fall back through the system
+        // sounds before giving up.
+        val candidates = buildList {
+            soundUri?.let { add(Uri.parse(it)) }
+            for (type in listOf(
+                RingtoneManager.TYPE_ALARM, RingtoneManager.TYPE_RINGTONE, RingtoneManager.TYPE_NOTIFICATION
+            )) {
+                runCatching { RingtoneManager.getActualDefaultRingtoneUri(this@AlarmService, type) }
+                    .getOrNull()?.let { add(it) }
+            }
+        }
+        for (uri in candidates) {
+            val player = MediaPlayer()
+            try {
+                player.setAudioAttributes(
                     AudioAttributes.Builder()
                         .setUsage(AudioAttributes.USAGE_ALARM)
                         .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                         .build()
                 )
-                setDataSource(this@AlarmService, uri!!)
-                isLooping = true
-                setVolume(startVolume, startVolume)
-                prepare()
-                start()
+                player.setDataSource(this, uri)
+                player.isLooping = true
+                player.setVolume(startVolume, startVolume)
+                player.prepare()
+                player.start()
+                mediaPlayer = player
+                if (gradual) startVolumeRamp(target)
+                return true
+            } catch (e: Exception) {
+                runCatching { player.release() }
             }
-            if (gradual) startVolumeRamp(target)
-        } catch (e: Exception) {
-            // If the custom sound URI can no longer be resolved (e.g. permission revoked),
-            // fall back silently to vibration only so the alarm still wakes the user.
         }
+        return false
     }
 
     /** Fades the player up to [target] over [VolumeRamp.RAMP_MS], ending the loop once it gets there. */
@@ -230,6 +252,12 @@ class AlarmService : Service() {
         }
         val pattern = longArrayOf(0, 800, 400)
         vibrator?.vibrate(VibrationEffect.createWaveform(pattern, 0))
+    }
+
+    private fun cancelPendingBackups() {
+        val scheduler = AlarmScheduler(this)
+        primaryRings.forEach { scheduler.cancelFollowUp(it, FollowUp.BACKUP) }
+        primaryRings.clear()
     }
 
     fun stopRinging() {

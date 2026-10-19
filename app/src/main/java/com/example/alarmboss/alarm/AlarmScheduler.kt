@@ -22,37 +22,21 @@ class AlarmScheduler(private val context: Context) {
         val triggerAtMillis = nextTriggerTime(alarm) ?: return
         val pendingIntent = pendingIntentFor(alarm.id)
 
-        if (alarmManager.canScheduleExactAlarms()) {
-            alarmManager.setAlarmClock(
-                AlarmManager.AlarmClockInfo(triggerAtMillis, pendingIntent),
-                pendingIntent
-            )
-        } else {
-
-            alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
-        }
+        setAlarm(triggerAtMillis, pendingIntent, showInSystemClock = true)
     }
 
     /** Used for snooze: re-fires this same alarm id after N minutes, ignoring repeatDays. */
     fun scheduleOneOffInMinutes(alarm: Alarm, minutes: Int) {
         val triggerAtMillis = System.currentTimeMillis() + minutes * 60_000L
         val pendingIntent = pendingIntentFor(alarm.id)
-        if (alarmManager.canScheduleExactAlarms()) {
-            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
-        } else {
-            alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
-        }
+        setAlarm(triggerAtMillis, pendingIntent, showInSystemClock = false)
     }
 
     /** Rings this alarm again in [minutes] as a [FollowUp], without touching the alarm's own schedule. */
     fun scheduleFollowUp(alarmId: Long, kind: FollowUp, minutes: Int) {
         val triggerAtMillis = System.currentTimeMillis() + minutes * 60_000L
         val pendingIntent = pendingIntentFor(alarmId, kind)
-        if (alarmManager.canScheduleExactAlarms()) {
-            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
-        } else {
-            alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
-        }
+        setAlarm(triggerAtMillis, pendingIntent, showInSystemClock = false)
     }
 
     fun cancelFollowUp(alarmId: Long, kind: FollowUp) {
@@ -63,6 +47,27 @@ class AlarmScheduler(private val context: Context) {
     fun cancel(alarmId: Long) {
         alarmManager.cancel(pendingIntentFor(alarmId))
         FollowUp.values().forEach { cancelFollowUp(alarmId, it) }
+    }
+
+    /**
+     * Registers the wake-up as exactly as the system allows. Exact scheduling can be revoked at any
+     * moment from system settings, even between the check and the call, so a refusal falls back to an
+     * inexact alarm (late, but it rings) instead of crashing and leaving nothing scheduled.
+     */
+    private fun setAlarm(triggerAtMillis: Long, pendingIntent: PendingIntent, showInSystemClock: Boolean) {
+        if (alarmManager.canScheduleExactAlarms()) {
+            try {
+                if (showInSystemClock) {
+                    alarmManager.setAlarmClock(AlarmManager.AlarmClockInfo(triggerAtMillis, pendingIntent), pendingIntent)
+                } else {
+                    alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
+                }
+                return
+            } catch (_: SecurityException) {
+                // fall through to the inexact alarm
+            }
+        }
+        alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
     }
 
     private fun pendingIntentFor(alarmId: Long, followUp: FollowUp? = null): PendingIntent {
