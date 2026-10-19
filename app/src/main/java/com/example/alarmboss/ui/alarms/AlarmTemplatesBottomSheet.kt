@@ -15,11 +15,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.alarmboss.R
 import com.example.alarmboss.data.Alarm
 import com.example.alarmboss.data.AlarmTemplate
-import com.example.alarmboss.util.formatTime12h
+import com.example.alarmboss.util.formatTime
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,19 +64,19 @@ fun AlarmTemplatesBottomSheet(
                     Spacer(Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = "Free Alarm Templates",
+                            text = stringResource(R.string.templates_title),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "Proven morning routines ready in one tap",
+                            text = stringResource(R.string.templates_subtitle),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
                 IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, contentDescription = "Close")
+                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.action_close))
                 }
             }
 
@@ -112,7 +114,11 @@ fun AlarmTemplatesBottomSheet(
                                         )
                                         Spacer(Modifier.height(2.dp))
                                         Text(
-                                            text = "${formatTime12h(template.hour, template.minute)} · ${template.mode.name} Mode",
+                                            text = stringResource(
+                                                R.string.templates_time_and_mode,
+                                                formatTime(template.hour, template.minute, rememberIs24Hour()),
+                                                modeName(template.mode)
+                                            ),
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.primary,
                                             fontWeight = FontWeight.SemiBold
@@ -159,7 +165,7 @@ fun AlarmTemplatesBottomSheet(
                                     shape = RoundedCornerShape(10.dp),
                                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp)
                                 ) {
-                                    Text("Apply Template", fontWeight = FontWeight.Bold)
+                                    Text(stringResource(R.string.templates_apply), fontWeight = FontWeight.Bold)
                                 }
                             }
                         }

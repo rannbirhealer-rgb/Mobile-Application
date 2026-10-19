@@ -232,7 +232,7 @@ private fun AlarmEditForm(
                     }
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = "Tap to change alarm time",
+                        text = stringResource(R.string.edit_tap_to_change_time),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -253,7 +253,7 @@ private fun AlarmEditForm(
                         value = label,
                         onValueChange = { label = it },
                         label = { Text(stringResource(R.string.edit_label)) },
-                        placeholder = { Text("e.g. Morning Battle, Gym Wake-Up") },
+                        placeholder = { Text(stringResource(R.string.edit_label_hint)) },
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -344,7 +344,7 @@ private fun AlarmEditForm(
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     Text(
-                        "Sound & Sensory Awakening",
+                        stringResource(R.string.edit_section_sound),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -378,7 +378,7 @@ private fun AlarmEditForm(
                     // Switches for features
                     FeatureSwitchRow(
                         title = stringResource(R.string.edit_vibrate),
-                        subtitle = "Vibrate device while alarm is sounding",
+                        subtitle = stringResource(R.string.edit_vibrate_description),
                         checked = vibrate,
                         onCheckedChange = { vibrate = it }
                     )
@@ -424,7 +424,7 @@ private fun AlarmEditForm(
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     Text(
-                        "Safeguards & Morning Boost",
+                        stringResource(R.string.edit_section_safeguards),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )

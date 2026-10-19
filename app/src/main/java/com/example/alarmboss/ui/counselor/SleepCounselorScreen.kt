@@ -38,6 +38,8 @@ import androidx.compose.ui.unit.sp
 import com.example.alarmboss.counselor.ChatMessage
 import com.example.alarmboss.counselor.MessageSender
 import com.example.alarmboss.counselor.SleepCounselorEngine
+import androidx.compose.ui.res.stringResource
+import com.example.alarmboss.R
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -52,7 +54,7 @@ fun SleepCounselorScreen() {
         mutableStateListOf(
             ChatMessage(
                 sender = MessageSender.COUNSELOR,
-                text = "hey there, good to see you. i'm here whenever you want to talk about your sleep, late-night habits, or feeling more rested. how has your sleep felt lately?"
+                text = context.getString(R.string.counselor_greeting)
             )
         )
     }
@@ -143,12 +145,12 @@ fun SleepCounselorScreen() {
                         Spacer(Modifier.width(10.dp))
                         Column {
                             Text(
-                                "Sleep & Wellness Counselor",
+                                stringResource(R.string.settings_counselor_title),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                "Non-judgmental humane sleep guide",
+                                stringResource(R.string.counselor_tagline),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -173,16 +175,16 @@ fun SleepCounselorScreen() {
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 SuggestionChip(
-                    onClick = { sendMessage("How can I fix an irregular sleep schedule?") },
-                    label = { Text("🌙 Fixing sleep schedule", fontSize = 12.sp) }
+                    onClick = { sendMessage(context.getString(R.string.counselor_q_schedule)) },
+                    label = { Text(stringResource(R.string.counselor_chip_schedule), fontSize = 12.sp) }
                 )
                 SuggestionChip(
-                    onClick = { sendMessage("When should I stop drinking coffee before bed?") },
-                    label = { Text("☕ Caffeine cutoff", fontSize = 12.sp) }
+                    onClick = { sendMessage(context.getString(R.string.counselor_q_caffeine)) },
+                    label = { Text(stringResource(R.string.counselor_chip_caffeine), fontSize = 12.sp) }
                 )
                 SuggestionChip(
-                    onClick = { sendMessage("What is a good 30-min screen-free wind-down routine?") },
-                    label = { Text("📱 Digital dusk routine", fontSize = 12.sp) }
+                    onClick = { sendMessage(context.getString(R.string.counselor_q_screens)) },
+                    label = { Text(stringResource(R.string.counselor_chip_screens), fontSize = 12.sp) }
                 )
             }
 
@@ -210,7 +212,7 @@ fun SleepCounselorScreen() {
                             CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                             Spacer(Modifier.width(10.dp))
                             Text(
-                                "Counselor is reflecting...",
+                                stringResource(R.string.counselor_reflecting),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -248,7 +250,7 @@ fun SleepCounselorScreen() {
                     ) {
                         Icon(
                             imageVector = if (isListening) Icons.Default.MicOff else Icons.Default.Mic,
-                            contentDescription = "Voice Dictation",
+                            contentDescription = stringResource(R.string.counselor_voice),
                             tint = if (isListening) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
                         )
                     }
@@ -256,7 +258,7 @@ fun SleepCounselorScreen() {
                     OutlinedTextField(
                         value = inputText,
                         onValueChange = { inputText = it },
-                        placeholder = { Text("Ask about sleep habits or routines...") },
+                        placeholder = { Text(stringResource(R.string.counselor_input_hint)) },
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(24.dp),
                         maxLines = 4
@@ -272,7 +274,7 @@ fun SleepCounselorScreen() {
                             disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
                         )
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send")
+                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(R.string.counselor_send))
                     }
                 }
             }

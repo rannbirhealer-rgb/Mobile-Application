@@ -82,7 +82,7 @@ fun StatsScreen(viewModel: StatsViewModel) {
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    "Track your discipline & unlock RPG ranks",
+                    stringResource(R.string.stats_subtitle),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -105,7 +105,7 @@ fun StatsScreen(viewModel: StatsViewModel) {
                 ) {
                     Column {
                         Text(
-                            text = "PLAYER LEVEL",
+                            text = stringResource(R.string.stats_player_level),
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -343,7 +343,7 @@ fun StatsScreen(viewModel: StatsViewModel) {
                                         color = MaterialTheme.colorScheme.primary
                                     ) {
                                         Text(
-                                            text = "Equipped",
+                                            text = stringResource(R.string.stats_equipped),
                                             style = MaterialTheme.typography.labelSmall,
                                             fontWeight = FontWeight.Bold,
                                             color = MaterialTheme.colorScheme.onPrimary,
