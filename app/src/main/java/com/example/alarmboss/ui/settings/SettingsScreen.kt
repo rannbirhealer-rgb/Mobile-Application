@@ -20,8 +20,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.alarmboss.R
 import com.example.alarmboss.util.SnoozeSettings
-import android.app.admin.DevicePolicyManager
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import androidx.compose.material.icons.filled.FamilyRestroom
@@ -29,7 +27,6 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PrivacyTip
 import androidx.compose.material.icons.filled.Spa
 import androidx.compose.ui.platform.LocalContext
-import com.example.alarmboss.alarm.AlarmDeviceAdminReceiver
 import com.example.alarmboss.data.ParentModeManager
 import com.example.alarmboss.ui.alarms.rememberIs24Hour
 import com.example.alarmboss.util.formatTime
@@ -49,9 +46,6 @@ fun SettingsScreen(
     val barcodeText by viewModel.barcodeText.collectAsState()
     val isGeneratingPassages by viewModel.isGeneratingPassages.collectAsState()
 
-    val dpm = remember { context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager }
-    val adminComponent = remember { ComponentName(context, AlarmDeviceAdminReceiver::class.java) }
-    var isAdminActive by remember { mutableStateOf(dpm.isAdminActive(adminComponent)) }
     Scaffold(
         topBar = {
             TopAppBar(
