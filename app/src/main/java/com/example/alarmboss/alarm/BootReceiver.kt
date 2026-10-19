@@ -11,7 +11,7 @@ import kotlinx.coroutines.launch
 
 /**
  * Reschedules all enabled alarms whenever the system's idea of "when" changes under them: after
- * a reboot (alarms don't survive one) and when the time zone or clock is changed (each alarm is
+ * a reboot or an app update (alarms survive neither) and when the time zone or clock is changed (each alarm is
  * stored as an absolute moment, so without this a 7:00 alarm would ring at the old zone's 7:00).
  */
 class BootReceiver : BroadcastReceiver() {
@@ -32,7 +32,10 @@ class BootReceiver : BroadcastReceiver() {
         val HANDLED_ACTIONS = setOf(
             Intent.ACTION_BOOT_COMPLETED,
             Intent.ACTION_TIMEZONE_CHANGED,
-            Intent.ACTION_TIME_CHANGED
+            Intent.ACTION_TIME_CHANGED,
+            // The system drops an app's alarms when it is updated; without this a new version stays
+            // silent until the user happens to open it.
+            Intent.ACTION_MY_PACKAGE_REPLACED
         )
     }
 }
