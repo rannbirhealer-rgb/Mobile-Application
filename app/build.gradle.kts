@@ -16,8 +16,8 @@ android {
         applicationId = "com.example.alarmboss"
         minSdk = 36
         targetSdk = 36
-        versionCode = 8
-        versionName = "1.7.0"
+        versionCode = 9
+        versionName = "1.7.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
