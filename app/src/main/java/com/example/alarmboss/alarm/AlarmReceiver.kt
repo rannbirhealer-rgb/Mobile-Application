@@ -47,7 +47,7 @@ class AlarmReceiver : BroadcastReceiver() {
         )
 
         val notification = NotificationCompat.Builder(context, AlarmBossApp.CHANNEL_ALARM)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle(context.getString(R.string.wake_check_title))
             .setContentText(context.getString(R.string.wake_check_body))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -55,7 +55,7 @@ class AlarmReceiver : BroadcastReceiver() {
             .setContentIntent(confirmPending)
             .setAutoCancel(true)
             .addAction(
-                R.drawable.ic_launcher_foreground,
+                R.mipmap.ic_launcher,
                 context.getString(R.string.wake_check_im_awake),
                 confirmPending
             )

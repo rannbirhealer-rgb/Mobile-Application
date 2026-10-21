@@ -9,11 +9,15 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.activity.OnBackPressedCallback
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.pluralStringResource
@@ -286,12 +290,18 @@ private fun EasyDismissScreen(alarm: Alarm, snoozeMinutes: Int, onDismiss: () ->
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Surface(
-            shape = androidx.compose.foundation.shape.CircleShape,
-            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-            modifier = Modifier.size(100.dp)
+            shape = RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f),
+            modifier = Modifier.size(130.dp)
         ) {
             Box(contentAlignment = Alignment.Center) {
-                Text("⏰", fontSize = 48.sp)
+                Image(
+                    painter = painterResource(R.drawable.app_logo),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(116.dp)
+                        .clip(RoundedCornerShape(24.dp))
+                )
             }
         }
 

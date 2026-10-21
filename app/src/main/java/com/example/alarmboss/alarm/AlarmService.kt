@@ -83,7 +83,7 @@ class AlarmService : Service() {
             )
 
             val notification: Notification = NotificationCompat.Builder(this@AlarmService, AlarmBossApp.CHANNEL_ALARM)
-                .setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setSmallIcon(R.mipmap.ic_launcher)
                 .setContentTitle(alarm.label.ifBlank { getString(R.string.ringing_default_label) })
                 .setContentText(getString(R.string.notification_tap_to_open))
                 .setPriority(NotificationCompat.PRIORITY_MAX)
