@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="holiday_new_year">New Year\'s Day</string>
+    <string name="holiday_christmas">Christmas Day</string>
+    <string name="holiday_republic_day">Republic Day</string>
+    <string name="holiday_independence_day">Independence Day</string>
+    <string name="holiday_gandhi_jayanti">Gandhi Jayanti</string>
+    <string name="holiday_memorial_day">Memorial Day</string>
+    <string name="holiday_labor_day">Labor Day</string>
+    <string name="holiday_thanksgiving">Thanksgiving</string>
+    <string name="holiday_good_friday">Good Friday</string>
+    <string name="holiday_easter_monday">Easter Monday</string>
+    <string name="holiday_boxing_day">Boxing Day</string>
+    <string name="holiday_custom">Your day off</string>
+
+    <string name="holiday_prompt_title">Skip alarms for %1$s?</string>
+    <plurals name="holiday_prompt_body">
+        <item quantity="one">%1$s is on %2$s. Skip your repeating alarm that day?</item>
+        <item quantity="other">%1$s is on %2$s. Skip your %3$d repeating alarms that day?</item>
+    </plurals>
+    <string name="holiday_prompt_note">Other days are unaffected, and one-time alarms are never skipped.</string>
+    <string name="holiday_prompt_skip">Skip that day</string>
+    <string name="holiday_prompt_keep">Keep ringing</string>
+
+    <string name="settings_holiday_title">Holidays</string>
+    <string name="settings_holiday_switch">Offer to skip alarms on holidays</string>
+    <string name="settings_holiday_body">A week ahead, the app asks whether your repeating alarms should stay quiet on an upcoming holiday. Nothing is skipped unless you say yes.</string>
+    <string name="settings_holiday_region">Holidays to watch</string>
+    <string name="holiday_region_worldwide">Worldwide</string>
+    <string name="holiday_region_india">India</string>
+    <string name="holiday_region_us">United States</string>
+    <string name="holiday_region_uk">United Kingdom</string>
+    <string name="settings_holiday_custom_title">Your own days off</string>
+    <string name="settings_holiday_custom_body">Add festivals or personal days that can\'t be worked out automatically, such as Diwali or Eid.</string>
+    <string name="settings_holiday_custom_add">Add a day</string>
+    <string name="settings_holiday_custom_remove">Remove %1$s</string>
+    <string name="settings_holiday_skips_title">Alarms will stay quiet on</string>
+    <string name="settings_holiday_skip_cancel">Ring again on %1$s</string>
+</resources>

@@ -33,7 +33,10 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.alarmboss.R
 import com.example.alarmboss.data.*
-import com.example.alarmboss.util.formatTime12h
+import com.example.alarmboss.engine.AlarmTimeCalculator
+import java.time.LocalDate
+import java.time.LocalDateTime
+import com.example.alarmboss.util.formatTime
 import java.time.DayOfWeek
 import java.time.format.TextStyle
 
@@ -65,12 +68,18 @@ private fun AlarmEditForm(
     viewModel: AlarmViewModel
 ) {
     val context = LocalContext.current
+    val is24Hour = rememberIs24Hour()
 
     var hour by rememberSaveable(base) { mutableStateOf(base?.hour ?: 7) }
     var minute by rememberSaveable(base) { mutableStateOf(base?.minute ?: 0) }
     var label by rememberSaveable(base) { mutableStateOf(base?.label ?: "") }
     var mode by rememberSaveable(base) { mutableStateOf(base?.mode ?: AlarmMode.EASY) }
     var days by rememberSaveable(base) { mutableStateOf(base?.repeatDays ?: emptySet()) }
+    // Kept as an ISO string so it fits the saved-state bundle; mutually exclusive with `days`.
+    var specificDateIso by rememberSaveable(base) { mutableStateOf(base?.specificDate) }
+    val specificDate = specificDateIso?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+    val dateHasPassed = specificDate != null &&
+        AlarmTimeCalculator.nextTrigger(hour, minute, emptySet(), LocalDateTime.now(), specificDate) == null
     var soundUri by rememberSaveable(base) { mutableStateOf(base?.soundUri) }
     var vibrate by rememberSaveable(base) { mutableStateOf(base?.vibrate ?: true) }
     var enabledTasks by rememberSaveable(base) { mutableStateOf(base?.enabledMediumTasks ?: MediumTaskType.values().toSet()) }
@@ -91,12 +100,15 @@ private fun AlarmEditForm(
     var showCameraWarning by rememberSaveable { mutableStateOf(false) }
 
     fun saveAlarm() {
+        val effectiveWakeCheck = if (mode != AlarmMode.EASY) true else wakeCheck
         viewModel.save(
             Alarm(
                 id = base?.id ?: 0L,
                 hour = hour, minute = minute, label = label,
                 isEnabled = base?.isEnabled ?: true,
-                repeatDays = days, mode = mode, soundUri = soundUri,
+                repeatDays = if (specificDate != null) emptySet() else days,
+                specificDate = specificDate?.toString(),
+                mode = mode, soundUri = soundUri,
                 vibrate = vibrate, enabledMediumTasks = enabledTasks,
                 exerciseDurationSeconds = exerciseSeconds.toInt(),
                 exerciseType = exerciseType,
@@ -106,7 +118,7 @@ private fun AlarmEditForm(
                 flashLightBlink = flashLightBlink,
                 gradualVolume = gradualVolume,
                 sunriseMode = sunriseMode,
-                wakeCheck = wakeCheck,
+                wakeCheck = effectiveWakeCheck,
                 morningBriefing = morningBriefing
             )
         )
@@ -160,8 +172,10 @@ private fun AlarmEditForm(
                     }
                 },
                 actions = {
+                    // Saving a pinned moment that has already gone would create an alarm that never rings.
                     Button(
                         onClick = ::onSaveClicked,
+                        enabled = !dateHasPassed,
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.padding(end = 8.dp)
                     ) {
@@ -189,7 +203,7 @@ private fun AlarmEditForm(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable {
-                        TimePickerDialog(context, { _, h, m -> hour = h; minute = m }, hour, minute, false).show()
+                        TimePickerDialog(context, { _, h, m -> hour = h; minute = m }, hour, minute, is24Hour).show()
                     }
             ) {
                 Column(
@@ -210,7 +224,7 @@ private fun AlarmEditForm(
                         )
                         Spacer(Modifier.width(10.dp))
                         Text(
-                            text = formatTime12h(hour, minute),
+                            text = formatTime(hour, minute, is24Hour),
                             style = MaterialTheme.typography.displayMedium,
                             fontWeight = FontWeight.ExtraBold,
                             color = MaterialTheme.colorScheme.primary
@@ -218,7 +232,7 @@ private fun AlarmEditForm(
                     }
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = "Tap to change alarm time",
+                        text = stringResource(R.string.edit_tap_to_change_time),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -239,7 +253,7 @@ private fun AlarmEditForm(
                         value = label,
                         onValueChange = { label = it },
                         label = { Text(stringResource(R.string.edit_label)) },
-                        placeholder = { Text("e.g. Morning Battle, Gym Wake-Up") },
+                        placeholder = { Text(stringResource(R.string.edit_label_hint)) },
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -249,7 +263,26 @@ private fun AlarmEditForm(
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold
                     )
-                    DaySelector(selected = days, onChange = { days = it })
+                    DaySelector(
+                        selected = days,
+                        onChange = {
+                            days = it
+                            if (it.isNotEmpty()) specificDateIso = null
+                        }
+                    )
+                    RepeatExtras(
+                        days = days,
+                        specificDate = specificDate,
+                        dateHasPassed = dateHasPassed,
+                        onDaysChange = {
+                            days = it
+                            specificDateIso = null
+                        },
+                        onDateChange = { picked ->
+                            specificDateIso = picked?.toString()
+                            if (picked != null) days = emptySet()
+                        }
+                    )
                 }
             }
 
@@ -311,7 +344,7 @@ private fun AlarmEditForm(
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     Text(
-                        "Sound & Sensory Awakening",
+                        stringResource(R.string.edit_section_sound),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -345,7 +378,7 @@ private fun AlarmEditForm(
                     // Switches for features
                     FeatureSwitchRow(
                         title = stringResource(R.string.edit_vibrate),
-                        subtitle = "Vibrate device while alarm is sounding",
+                        subtitle = stringResource(R.string.edit_vibrate_description),
                         checked = vibrate,
                         onCheckedChange = { vibrate = it }
                     )
@@ -391,16 +424,23 @@ private fun AlarmEditForm(
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     Text(
-                        "Safeguards & Morning Boost",
+                        stringResource(R.string.edit_section_safeguards),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
 
+                    val isWakeCheckLocked = mode == AlarmMode.MEDIUM || mode == AlarmMode.STRICT
                     FeatureSwitchRow(
                         title = stringResource(R.string.edit_wake_check),
-                        subtitle = stringResource(R.string.edit_wake_check_description),
-                        checked = wakeCheck,
-                        onCheckedChange = { wakeCheck = it }
+                        subtitle = if (isWakeCheckLocked) {
+                            stringResource(R.string.edit_wake_check_locked, modeName(mode))
+                        } else {
+                            stringResource(R.string.edit_wake_check_description)
+                        },
+                        checked = if (isWakeCheckLocked) true else wakeCheck,
+                        enabled = !isWakeCheckLocked,
+                        lockedBadge = if (isWakeCheckLocked) "🔒 Locked ON" else null,
+                        onCheckedChange = { if (!isWakeCheckLocked) wakeCheck = it }
                     )
 
                     FeatureSwitchRow(
@@ -420,6 +460,8 @@ private fun FeatureSwitchRow(
     title: String,
     subtitle: String,
     checked: Boolean,
+    enabled: Boolean = true,
+    lockedBadge: String? = null,
     onCheckedChange: (Boolean) -> Unit
 ) {
     Row(
@@ -428,14 +470,32 @@ private fun FeatureSwitchRow(
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
-            Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                if (lockedBadge != null) {
+                    Spacer(Modifier.width(8.dp))
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = MaterialTheme.colorScheme.tertiaryContainer,
+                        modifier = Modifier.padding(vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = lockedBadge,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+            }
             Text(
                 subtitle,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
+        Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
     }
 }
 

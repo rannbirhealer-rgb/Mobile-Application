@@ -2,14 +2,11 @@ package com.example.alarmboss.ui.stats
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.res.painterResource
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.LocalFireDepartment
@@ -28,6 +25,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.Image
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
 import com.example.alarmboss.R
 import com.example.alarmboss.ui.theme.FlameGradientEnd
 import com.example.alarmboss.ui.theme.FlameGradientStart
@@ -78,7 +78,7 @@ fun StatsScreen(viewModel: StatsViewModel) {
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    "Track your discipline & unlock RPG ranks",
+                    stringResource(R.string.stats_subtitle),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -101,7 +101,7 @@ fun StatsScreen(viewModel: StatsViewModel) {
                 ) {
                     Column {
                         Text(
-                            text = "PLAYER LEVEL",
+                            text = stringResource(R.string.stats_player_level),
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -339,7 +339,7 @@ fun StatsScreen(viewModel: StatsViewModel) {
                                         color = MaterialTheme.colorScheme.primary
                                     ) {
                                         Text(
-                                            text = "Equipped",
+                                            text = stringResource(R.string.stats_equipped),
                                             style = MaterialTheme.typography.labelSmall,
                                             fontWeight = FontWeight.Bold,
                                             color = MaterialTheme.colorScheme.onPrimary,

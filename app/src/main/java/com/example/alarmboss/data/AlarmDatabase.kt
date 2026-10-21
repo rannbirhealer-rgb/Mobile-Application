@@ -10,7 +10,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [Alarm::class, UserProfile::class, WakeEvent::class],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -40,6 +40,13 @@ abstract class AlarmDatabase : RoomDatabase() {
             }
         }
 
+        /** Adds the optional pinned date for one-time alarms; existing alarms simply get no date. */
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE alarms ADD COLUMN specificDate TEXT")
+            }
+        }
+
         fun getInstance(context: Context): AlarmDatabase =
             INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
@@ -47,10 +54,10 @@ abstract class AlarmDatabase : RoomDatabase() {
                     AlarmDatabase::class.java,
                     "alarmboss.db"
                 )
-                .addMigrations(MIGRATION_2_3, MIGRATION_3_4)
-                .fallbackToDestructiveMigration(true)
-                .build()
-                .also { INSTANCE = it }
+                    // Real migrations, so upgrading keeps every saved alarm instead of wiping them.
+                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                    .fallbackToDestructiveMigration(true)
+                    .build().also { INSTANCE = it }
             }
     }
 }

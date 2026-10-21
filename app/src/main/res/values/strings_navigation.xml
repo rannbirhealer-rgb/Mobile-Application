@@ -2,6 +2,7 @@
 <resources>
     <string name="nav_alarms">Alarms</string>
     <string name="nav_stats">Stats</string>
+    <string name="nav_counselor">Sleep AI</string>
     <string name="nav_stopwatch">Stopwatch</string>
     <string name="nav_settings">Settings</string>
 </resources>

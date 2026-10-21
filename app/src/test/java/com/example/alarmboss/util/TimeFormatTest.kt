@@ -6,6 +6,23 @@ import org.junit.Test
 class TimeFormatTest {
 
     @Test
+    fun `24-hour format zero-pads the hour`() {
+        assertEquals("07:05", formatTime(7, 5, is24Hour = true))
+    }
+
+    @Test
+    fun `24-hour format shows midnight as 00 and the afternoon as 13 to 23`() {
+        assertEquals("00:00", formatTime(0, 0, is24Hour = true))
+        assertEquals("18:30", formatTime(18, 30, is24Hour = true))
+        assertEquals("23:59", formatTime(23, 59, is24Hour = true))
+    }
+
+    @Test
+    fun `12-hour preference keeps the AM PM format`() {
+        assertEquals("6:30 PM", formatTime(18, 30, is24Hour = false))
+    }
+
+    @Test
     fun `midnight formats as 12 AM`() {
         assertEquals("12:00 AM", formatTime12h(0, 0))
     }

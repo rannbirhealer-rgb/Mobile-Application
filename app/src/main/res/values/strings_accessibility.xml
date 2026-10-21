@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_access_title">Accessibility</string>
+    <string name="settings_access_silent">Vibration only, no sound</string>
+    <string name="settings_access_silent_body">Wakes you by vibration (always on in this mode) instead of sound. For people who can\'t rely on hearing, or who share a room.</string>
+    <string name="settings_access_flash">Flash the light</string>
+    <string name="settings_access_flash_body">Blinks the camera light while an alarm rings so it can be seen as well as felt or heard.</string>
+
+    <string name="strict_puzzle_instead">Can\'t exercise? Solve puzzles instead</string>
+</resources>

@@ -3,29 +3,31 @@ package com.example.alarmboss.ui.ringing
 import android.animation.ValueAnimator
 import android.os.Build
 import android.os.Bundle
+import android.text.format.DateFormat
 import android.view.WindowManager
 import android.view.animation.LinearInterpolator
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.activity.OnBackPressedCallback
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.Image
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
 import com.example.alarmboss.R
 import com.example.alarmboss.alarm.AlarmReceiver
 import com.example.alarmboss.alarm.AlarmService
+import com.example.alarmboss.alarm.FollowUp
 import com.example.alarmboss.data.Alarm
 import com.example.alarmboss.data.AlarmMode
 import com.example.alarmboss.data.MediumTaskType
@@ -39,6 +41,9 @@ import com.example.alarmboss.ui.ringing.tasks.MemoryTaskScreen
 import com.example.alarmboss.ui.ringing.tasks.PatternLockTaskScreen
 import com.example.alarmboss.ui.ringing.tasks.ReadingTaskScreen
 import com.example.alarmboss.ui.ringing.tasks.WordScrambleTaskScreen
+import com.example.alarmboss.data.ParentModeManager
+import com.example.alarmboss.ui.common.HoldToConfirmButton
+import com.example.alarmboss.ui.parent.ParentPinDialog
 import android.speech.tts.TextToSpeech
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -48,6 +53,12 @@ import androidx.compose.ui.unit.sp
 import com.example.alarmboss.ui.ringing.tasks.StepCounterTaskScreen
 import java.util.Locale
 import com.example.alarmboss.ui.theme.AlarmBossTheme
+import com.example.alarmboss.util.StreakManager
+import com.example.alarmboss.util.formatTime
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 /**
  * Full-screen activity shown over the lock screen when an alarm fires. This is the ONLY
@@ -60,11 +71,68 @@ class AlarmRingingActivity : ComponentActivity() {
     private val viewModel: AlarmRingingViewModel by viewModels()
     private var brightnessAnimator: ValueAnimator? = null
     private var tts: TextToSpeech? = null
+    private var isBatteryCritical by mutableStateOf(false)
+    private var showMorningQuest by mutableStateOf(false)
+    private var askParentPinToStop by mutableStateOf(false)
+    private val parentMode by lazy { ParentModeManager(this) }
+    private var batteryAlertJob: kotlinx.coroutines.Job? = null
+    private var isAlarmActive = true
+
+    private val batteryReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: android.content.Context?, intent: android.content.Intent?) {
+            when (intent?.action) {
+                android.content.Intent.ACTION_BATTERY_CHANGED -> {
+                    val level = intent.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, -1)
+                    val scale = intent.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, -1)
+                    val pct = if (scale > 0) (level * 100) / scale else -1
+                    val status = intent.getIntExtra(android.os.BatteryManager.EXTRA_STATUS, -1)
+                    val isCharging = status == android.os.BatteryManager.BATTERY_STATUS_CHARGING ||
+                            status == android.os.BatteryManager.BATTERY_STATUS_FULL
+
+                    if (pct in 0..5 && !isCharging && isAlarmActive) {
+                        if (!isBatteryCritical) {
+                            isBatteryCritical = true
+                            startBatteryDictationLoop()
+                        }
+                    } else if (isCharging) {
+                        if (isBatteryCritical) {
+                            isBatteryCritical = false
+                            batteryAlertJob?.cancel()
+                            tts?.speak(getString(R.string.ringing_tts_plugged_in), TextToSpeech.QUEUE_FLUSH, null, "plugged_in")
+                        }
+                    }
+                }
+                android.content.Intent.ACTION_POWER_CONNECTED -> {
+                    if (isBatteryCritical) {
+                        isBatteryCritical = false
+                        batteryAlertJob?.cancel()
+                        tts?.speak(getString(R.string.ringing_tts_plugged_in), TextToSpeech.QUEUE_FLUSH, null, "plugged_in")
+                    }
+                }
+            }
+        }
+    }
+
+    private fun startBatteryDictationLoop() {
+        batteryAlertJob?.cancel()
+        batteryAlertJob = lifecycleScope.launch {
+            while (isActive && isBatteryCritical && isAlarmActive) {
+                tts?.speak(getString(R.string.ringing_tts_battery_low), TextToSpeech.QUEUE_FLUSH, null, "battery_alert")
+                kotlinx.coroutines.delay(3500)
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         showOverLockScreen()
 
+        val filter = android.content.IntentFilter().apply {
+            addAction(android.content.Intent.ACTION_BATTERY_CHANGED)
+            addAction(android.content.Intent.ACTION_POWER_CONNECTED)
+            addAction(android.content.Intent.ACTION_POWER_DISCONNECTED)
+        }
+        registerReceiver(batteryReceiver, filter)
         tts = TextToSpeech(this) { status ->
             if (status == TextToSpeech.SUCCESS) {
                 tts?.language = Locale.getDefault()
@@ -82,13 +150,12 @@ class AlarmRingingActivity : ComponentActivity() {
         })
 
         val alarmId = intent.getLongExtra(AlarmReceiver.EXTRA_ALARM_ID, -1L)
-        viewModel.load(alarmId)
+        val isWakeCheck = intent.getStringExtra(AlarmReceiver.EXTRA_FOLLOW_UP) == FollowUp.WAKE_CHECK.name
+        viewModel.load(alarmId, isWakeCheck)
 
         setContent {
             AlarmBossTheme {
                 val session by viewModel.session.collectAsState()
-                var showMorningQuest by remember { mutableStateOf(false) }
-
                 LaunchedEffect(session) {
                     if (session?.alarm?.dynamicBrightness == true) {
                         startDynamicBrightnessRamp()
@@ -121,28 +188,72 @@ class AlarmRingingActivity : ComponentActivity() {
                             }
                         }
                 ) {
-                    session?.let {
-                        RingingContent(it, onDismiss = {
-                            if (viewModel.completeWakeUp()) {
-                                AlarmService.stop(this@AlarmRingingActivity)
-                                if (it.alarm.morningBriefing) {
-                                    val timeStr = com.example.alarmboss.util.formatTime12h(it.alarm.hour, it.alarm.minute)
-                                    val greeting = "Good morning! It is $timeStr. You are on a ${it.currentStreak} day streak. You have successfully conquered today's alarm!"
-                                    tts?.speak(greeting, TextToSpeech.QUEUE_FLUSH, null, "briefing")
-                                }
-                                showMorningQuest = true
-                            }
-                        }, onSnooze = ::snoozeAlarm)
-                    } ?: LoadingContent()
+                    Box(Modifier.fillMaxSize()) {
+                        session?.let {
+                            RingingContent(
+                                it,
+                                onDismiss = { dismissAlarm(it) },
+                                onSnooze = ::snoozeAlarm,
+                                onEmergencyStop = ::requestEmergencyStop,
+                                onUsePuzzleInstead = viewModel::useStrictPuzzleAlternative
+                            )
+                        } ?: LoadingContent()
 
-                    if (showMorningQuest) {
-                        MorningQuestDialog(
-                            onClaimBonus = { bonusXp ->
-                                viewModel.addQuestBonusXp(bonusXp)
-                                finish()
-                            },
-                            onSkip = { finish() }
-                        )
+                        // Critical battery warning banner
+                        if (isBatteryCritical) {
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp)
+                                    .align(Alignment.TopCenter),
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                                color = MaterialTheme.colorScheme.error,
+                                tonalElevation = 8.dp
+                            ) {
+                                Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        stringResource(R.string.ringing_battery_low_title),
+                                        color = MaterialTheme.colorScheme.onError,
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
+                                        fontSize = 18.sp
+                                    )
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(
+                                        stringResource(R.string.ringing_battery_low_body),
+                                        color = MaterialTheme.colorScheme.onError,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                    )
+                                }
+                            }
+                        }
+
+                        // With Parent Mode's lock on, ending an alarm without its challenge is the
+                        // parent's decision, not the child's.
+                        if (askParentPinToStop) {
+                            ParentPinDialog(
+                                manager = parentMode,
+                                message = stringResource(R.string.parent_pin_stop_message),
+                                confirmLabel = stringResource(R.string.action_confirm),
+                                onVerified = {
+                                    askParentPinToStop = false
+                                    emergencyStop()
+                                },
+                                onDismiss = { askParentPinToStop = false }
+                            )
+                        }
+
+                        if (showMorningQuest) {
+                            MorningQuestDialog(
+                                isMorningStreakAwarded = viewModel.lastWakeResult?.isMorningWindow ?: true,
+                                streakCount = viewModel.lastWakeResult?.currentStreak ?: session?.currentStreak ?: 1,
+                                onClaimBonus = { bonusXp ->
+                                    viewModel.addQuestBonusXp(bonusXp)
+                                    finish()
+                                },
+                                onSkip = { finish() }
+                            )
+                        }
                     }
                 }
             }
@@ -173,17 +284,10 @@ class AlarmRingingActivity : ComponentActivity() {
     }
 
     private fun showOverLockScreen() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-            setShowWhenLocked(true)
-            setTurnScreenOn(true)
-        } else {
-            @Suppress("DEPRECATION")
-            window.addFlags(
-                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
-                        WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
-                        WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
-            )
-        }
+        setShowWhenLocked(true)
+        setTurnScreenOn(true)
+        // Keep the screen on for as long as the challenge takes, so it can't time out mid-puzzle.
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
 
     private fun snoozeAlarm() {
@@ -192,9 +296,42 @@ class AlarmRingingActivity : ComponentActivity() {
         finish()
     }
 
+    private fun dismissAlarm(session: RingSession) {
+        if (!viewModel.completeWakeUp()) return
+        isAlarmActive = false
+        batteryAlertJob?.cancel()
+        AlarmService.stop(this)
+        // Passing the wake-up check is not a fresh wake-up, so it gets no briefing and no morning quest.
+        if (session.isWakeCheck) {
+            finish()
+            return
+        }
+        if (session.alarm.morningBriefing) {
+            val time = formatTime(session.alarm.hour, session.alarm.minute, DateFormat.is24HourFormat(this))
+            tts?.speak(
+                getString(R.string.ringing_briefing, time, session.currentStreak),
+                TextToSpeech.QUEUE_FLUSH, null, "briefing"
+            )
+        }
+        showMorningQuest = true
+    }
+
+    private fun requestEmergencyStop() {
+        if (parentMode.isLockActive()) askParentPinToStop = true else emergencyStop()
+    }
+
+    private fun emergencyStop() {
+        if (!viewModel.emergencyStop()) return
+        AlarmService.stop(this)
+        finish()
+    }
+
     override fun onDestroy() {
         brightnessAnimator?.cancel()
         brightnessAnimator = null
+        batteryAlertJob?.cancel()
+        batteryAlertJob = null
+        runCatching { unregisterReceiver(batteryReceiver) }
         tts?.stop()
         tts?.shutdown()
         tts = null
@@ -205,7 +342,6 @@ class AlarmRingingActivity : ComponentActivity() {
         const val EXTRA_DYNAMIC_BRIGHTNESS = "extra_dynamic_brightness"
         const val EXTRA_SUNRISE_MODE = "extra_sunrise_mode"
         const val EXTRA_MORNING_BRIEFING = "extra_morning_briefing"
-        const val EXTRA_WAKE_CHECK = "extra_wake_check"
     }
 }
 
@@ -215,9 +351,57 @@ private fun LoadingContent() {
 }
 
 @Composable
-private fun RingingContent(session: RingSession, onDismiss: () -> Unit, onSnooze: () -> Unit) {
+private fun RingingContent(
+    session: RingSession,
+    onDismiss: () -> Unit,
+    onSnooze: () -> Unit,
+    onEmergencyStop: () -> Unit,
+    onUsePuzzleInstead: () -> Unit
+) {
+    Column(Modifier.fillMaxSize()) {
+        Box(Modifier.weight(1f)) { RingingBody(session, onDismiss, onSnooze, onUsePuzzleInstead) }
+        // Easy alarms already have a one-tap Dismiss; every harder mode needs a way out too.
+        if (session.alarm.mode != AlarmMode.EASY) EmergencyStopBar(onEmergencyStop)
+    }
+}
+
+/** A deliberately slow way to end an alarm whose challenge can't be completed. */
+@Composable
+private fun EmergencyStopBar(onConfirmed: () -> Unit) {
+    Column(
+        Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(stringResource(R.string.emergency_stop_prompt), style = MaterialTheme.typography.bodySmall)
+        HoldToConfirmButton(
+            label = stringResource(R.string.emergency_stop_hold, EMERGENCY_STOP_SECONDS),
+            holdMillis = EMERGENCY_STOP_SECONDS * 1000L,
+            onConfirmed = onConfirmed
+        )
+        Text(
+            stringResource(R.string.emergency_stop_note),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+private const val EMERGENCY_STOP_SECONDS = 10
+
+@Composable
+private fun RingingBody(
+    session: RingSession,
+    onDismiss: () -> Unit,
+    onSnooze: () -> Unit,
+    onUsePuzzleInstead: () -> Unit
+) {
     val alarm = session.alarm
     val plan = session.plan
+
+    if (session.isWakeCheck) {
+        WakeCheckScreen(onSolved = onDismiss)
+        return
+    }
 
     if (plan.isBossFight) {
         BossFightScreen(difficulty = plan.difficulty, onSolved = onDismiss)
@@ -269,11 +453,20 @@ private fun RingingContent(session: RingSession, onDismiss: () -> Unit, onSnooze
                         MentalExerciseType.MAZE -> MazeTaskScreen(difficulty = plan.difficulty, onSolved = onDismiss)
                     }
                 } else {
-                    StrictExerciseScreen(
-                        initialExercise = alarm.exerciseType,
-                        durationSeconds = alarm.exerciseDurationSeconds,
-                        onComplete = onDismiss
-                    )
+                    var puzzleInstead by remember(alarm.id) { mutableStateOf(false) }
+                    if (puzzleInstead) {
+                        MathTaskScreen(difficulty = plan.difficulty, onSolved = onDismiss)
+                    } else {
+                        StrictExerciseScreen(
+                            initialExercise = alarm.exerciseType,
+                            durationSeconds = alarm.exerciseDurationSeconds,
+                            onComplete = onDismiss,
+                            onUsePuzzleInstead = {
+                                onUsePuzzleInstead()
+                                puzzleInstead = true
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -290,7 +483,7 @@ private fun EasyDismissScreen(alarm: Alarm, snoozeMinutes: Int, onDismiss: () ->
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Surface(
-            shape = RoundedCornerShape(28.dp),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp),
             color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f),
             modifier = Modifier.size(130.dp)
         ) {
@@ -300,7 +493,7 @@ private fun EasyDismissScreen(alarm: Alarm, snoozeMinutes: Int, onDismiss: () ->
                     contentDescription = null,
                     modifier = Modifier
                         .size(116.dp)
-                        .clip(RoundedCornerShape(24.dp))
+                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(24.dp))
                 )
             }
         }
@@ -308,7 +501,7 @@ private fun EasyDismissScreen(alarm: Alarm, snoozeMinutes: Int, onDismiss: () ->
         Spacer(Modifier.height(20.dp))
 
         Text(
-            com.example.alarmboss.util.formatTime12h(alarm.hour, alarm.minute),
+            formatTime(alarm.hour, alarm.minute, DateFormat.is24HourFormat(LocalContext.current)),
             style = MaterialTheme.typography.displayMedium,
             fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
             color = MaterialTheme.colorScheme.primary
@@ -373,7 +566,12 @@ private fun EasyDismissScreen(alarm: Alarm, snoozeMinutes: Int, onDismiss: () ->
 }
 
 @Composable
-private fun MorningQuestDialog(onClaimBonus: (Int) -> Unit, onSkip: () -> Unit) {
+private fun MorningQuestDialog(
+    isMorningStreakAwarded: Boolean,
+    streakCount: Int,
+    onClaimBonus: (Int) -> Unit,
+    onSkip: () -> Unit
+) {
     var waterDone by remember { mutableStateOf(false) }
     var bedDone by remember { mutableStateOf(false) }
     var stretchDone by remember { mutableStateOf(false) }
@@ -384,13 +582,42 @@ private fun MorningQuestDialog(onClaimBonus: (Int) -> Unit, onSkip: () -> Unit) 
         onDismissRequest = onSkip,
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("☀️", fontSize = 22.sp)
+                Text(if (isMorningStreakAwarded) "🔥" else "☀️", fontSize = 22.sp)
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.morning_quest_title), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
             }
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                // Morning Window Streak Rule Banner
+                Surface(
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
+                    color = if (isMorningStreakAwarded) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, if (isMorningStreakAwarded) MaterialTheme.colorScheme.tertiary.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                ) {
+                    Column(modifier = Modifier.padding(10.dp)) {
+                        Text(
+                            text = if (isMorningStreakAwarded) {
+                                pluralStringResource(R.plurals.morning_quest_streak_awarded, streakCount, streakCount)
+                            } else {
+                                stringResource(R.string.morning_quest_no_streak)
+                            },
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                            color = if (isMorningStreakAwarded) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            text = if (isMorningStreakAwarded) {
+                                stringResource(R.string.morning_quest_window_hit, StreakManager.MORNING_WINDOW_START_HOUR, StreakManager.MORNING_WINDOW_END_HOUR)
+                            } else {
+                                stringResource(R.string.morning_quest_window_missed, StreakManager.MORNING_WINDOW_START_HOUR, StreakManager.MORNING_WINDOW_END_HOUR)
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (isMorningStreakAwarded) MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
                 Text(
                     stringResource(R.string.morning_quest_subtitle),
                     style = MaterialTheme.typography.bodyMedium,

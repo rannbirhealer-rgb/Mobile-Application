@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="notification_access_title">Alarms may not show on your lock screen</string>
+    <string name="notification_access_body_off">Notifications are turned off for AlarmBoss. An alarm could ring without showing the screen that lets you dismiss it. Turn them back on.</string>
+    <string name="notification_access_body_fullscreen">AlarmBoss isn\'t allowed to take over the screen. An alarm could ring without showing the screen that lets you dismiss it. Allow full-screen notifications.</string>
+    <string name="notification_access_fix">Open settings</string>
+</resources>

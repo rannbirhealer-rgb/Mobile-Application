@@ -56,12 +56,10 @@ class ContentStore(private val context: Context) {
     suspend fun getRegisteredBarcode(): String? = registeredBarcode.first()
 
     companion object {
-        // Generic, non-copyrighted filler text used only if the user hasn't added their own yet.
+        // Inspiring morning wake-up passages used if the user hasn't added custom ones yet.
         val defaultPassages = listOf(
-            "Add your own reading passages in Settings so this task quizzes you on text " +
-                "you actually chose. Until then, here is a placeholder paragraph: the quick " +
-                "brown fox jumps over the lazy dog while the early morning sun rises steadily " +
-                "over the quiet hills, and a gentle breeze moves through the trees."
+            "The morning sun rises steadily over the quiet hills, bringing calm clarity and a fresh start. Take a deep breath, drink a glass of water, and move forward into your day with focus and intention.",
+            "Energy and momentum are built one conscious step at a time. Clear away the distractions of yesterday and direct your mind toward the goals that truly inspire you today."
         )
     }
 }

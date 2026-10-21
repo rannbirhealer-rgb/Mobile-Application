@@ -20,9 +20,6 @@
     <string name="morning_quest_skip">Skip to Day</string>
 
     <!-- Wake-up check -->
-    <string name="wake_check_title">Are You Still Awake?</string>
-    <string name="wake_check_body">Tap to confirm you are up and moving!</string>
-    <string name="wake_check_im_awake">I\'m Awake!</string>
 
     <!-- Notification shown while an alarm rings, and its channel -->
     <string name="notification_tap_to_open">Tap to open</string>

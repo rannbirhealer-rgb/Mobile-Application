@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ringing_battery_low_title">⚠️ BATTERY LOW</string>
+    <string name="ringing_battery_low_body">Plug in your phone now so the alarm can keep ringing.</string>
+    <string name="ringing_tts_battery_low">Battery low. Charge your phone.</string>
+    <string name="ringing_tts_plugged_in">Phone plugged in. Resuming alarm challenge.</string>
+    <string name="ringing_briefing">Good morning! It is %1$s. You are on a %2$d day streak.</string>
+
+    <plurals name="morning_quest_streak_awarded">
+        <item quantity="one">🔥 Morning window conquered! Streak: %1$d day</item>
+        <item quantity="other">🔥 Morning window conquered! Streak: %1$d days</item>
+    </plurals>
+    <string name="morning_quest_no_streak">⏰ Alarm conquered (+XP)</string>
+    <string name="morning_quest_window_hit">Completed between %1$d:00 and %2$d:00, so your morning streak keeps burning.</string>
+    <string name="morning_quest_window_missed">Finished outside %1$d:00 to %2$d:00, so this wake-up earns XP but does not advance your morning streak.</string>
+</resources>

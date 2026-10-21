@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Wake-up check screen and notification -->
+    <string name="wake_check_title">Wake-up check</string>
+    <string name="wake_check_body">Still up? Solve this to prove it.</string>
+
+    <!-- Settings -->
+    <string name="settings_followup_title">Staying awake</string>
+    <string name="settings_wake_check">Wake-up check</string>
+    <string name="settings_wake_check_body">After you finish a Medium or Strict alarm, ring again with a quick sum, so passing the task and falling back asleep doesn\'t work.</string>
+    <string name="settings_wake_check_delay">Check after</string>
+    <string name="settings_minutes_option">%1$d min</string>
+    <string name="settings_backup_title">Backup alarm</string>
+    <string name="settings_backup_body">If you haven\'t completed an alarm after this long, it rings again. A safety net for a ring you missed or silenced by mistake.</string>
+    <string name="settings_backup_off">Off</string>
+</resources>

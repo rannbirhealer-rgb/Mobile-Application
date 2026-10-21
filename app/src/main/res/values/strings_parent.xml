@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="action_back">Back</string>
+    <string name="action_confirm">Confirm</string>
+
+    <string name="parent_title">Parent Mode (Ages 9-12)</string>
+    <string name="parent_active_title">Parent Mode Active &amp; Protected</string>
+    <string name="parent_supervised">Supervised by %1$s for %2$s (Age %3$d)</string>
+    <string name="parent_school_wake">School Wake-Up</string>
+    <string name="parent_bedtime">Bedtime Reminder</string>
+    <string name="parent_lock_title">Strict Child PIN Lock</string>
+    <string name="parent_lock_body">Prevents the child from changing, switching off, deleting or skipping alarms without your 4-digit PIN</string>
+    <string name="parent_lock_off_message">Enter your PIN to turn the strict lock off.</string>
+    <string name="parent_disable">Disable Parent Mode (Requires PIN)</string>
+    <string name="parent_disable_message">Enter your 4-digit security PIN to disable Parent Mode and unlock alarm controls.</string>
+    <string name="parent_disabled_toast">Parent Mode disabled</string>
+
+    <string name="parent_details_title">Parent Details Verification</string>
+    <string name="parent_name_label">Parent / Guardian Name</string>
+    <string name="parent_name_hint">e.g. Sarah Jenkins</string>
+    <string name="parent_email_label">Parent email (optional, kept only on this device)</string>
+    <string name="parent_email_hint">parent@example.com</string>
+    <string name="parent_pin_label">4-Digit PIN</string>
+    <string name="parent_pin_confirm_label">Confirm PIN</string>
+
+    <string name="parent_child_title">Child / Ward Profile (Ages 9-12)</string>
+    <string name="parent_child_name_label">Child\'s First Name</string>
+    <string name="parent_child_name_hint">e.g. Leo</string>
+    <string name="parent_age_prompt">Select age (sets the difficulty of the challenges):</string>
+    <string name="parent_age_option">%1$d yrs</string>
+    <string name="parent_school_morning">School Morning Wake-Up</string>
+    <string name="parent_school_morning_body">Mon - Fri routine with a locked wake-up check</string>
+    <string name="parent_school_alarm_label">🎒 School Routine for %1$s</string>
+
+    <string name="parent_enable">Verify &amp; Enable Parent Mode</string>
+    <string name="parent_error_names">Please enter parent and child names</string>
+    <string name="parent_error_pin">Please enter matching 4-digit PINs</string>
+    <string name="parent_enabled_toast">Parent Mode activated &amp; school alarm scheduled!</string>
+
+    <string name="parent_pin_title">Parent PIN Required</string>
+    <string name="parent_pin_unlock">Unlock</string>
+    <string name="parent_pin_alarm_message">Parent Mode is active. Enter your 4-digit PIN to continue.</string>
+    <string name="parent_pin_wrong">Incorrect PIN. Please try again.</string>
+    <plurals name="parent_pin_locked">
+        <item quantity="one">Too many wrong tries. Try again in %1$d second.</item>
+        <item quantity="other">Too many wrong tries. Try again in %1$d seconds.</item>
+    </plurals>
+    <string name="parent_pin_forgot">Forgot the PIN? Clear AlarmBoss\'s storage in Android Settings under Apps. That also deletes your alarms.</string>
+    <string name="parent_pin_stop_message">Parent Mode is active. Enter your PIN to stop this alarm without completing its challenge.</string>
+
+    <string name="parent_card_title">Parent Mode (Ages 9-12)</string>
+    <string name="parent_card_badge_on">PROTECTED</string>
+    <string name="parent_card_badge_off">SETUP</string>
+    <string name="parent_card_active">Active for %1$s (Age %2$d). School wake-up set to %3$s with a locked wake-up check.</string>
+    <string name="parent_card_inactive">Configure child-friendly morning routines (ages 9-12) and lock alarms behind a 4-digit security PIN so your child cannot disable them.</string>
+    <string name="parent_card_manage">Manage Parent Controls &amp; Schedule</string>
+    <string name="parent_card_setup">Setup Parent Mode</string>
+</resources>

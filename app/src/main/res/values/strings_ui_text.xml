@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="action_close">Close</string>
+
+    <string name="templates_title">Free Alarm Templates</string>
+    <string name="templates_subtitle">Proven morning routines ready in one tap</string>
+    <string name="templates_time_and_mode">%1$s · %2$s Mode</string>
+    <string name="templates_apply">Apply Template</string>
+
+    <string name="stats_subtitle">Track your discipline &amp; unlock RPG ranks</string>
+    <string name="stats_player_level">PLAYER LEVEL</string>
+    <string name="stats_equipped">Equipped</string>
+
+    <string name="stopwatch_col_lap">Lap</string>
+    <string name="stopwatch_col_split">Split Time</string>
+    <string name="stopwatch_lap_label">Lap %1$d</string>
+
+    <string name="counselor_greeting">hey there, good to see you. i\'m here whenever you want to talk about your sleep, late-night habits, or feeling more rested. how has your sleep felt lately?</string>
+    <string name="counselor_tagline">Non-judgmental humane sleep guide</string>
+    <string name="counselor_chip_schedule">🌙 Fixing sleep schedule</string>
+    <string name="counselor_chip_caffeine">☕ Caffeine cutoff</string>
+    <string name="counselor_chip_screens">📱 Digital dusk routine</string>
+    <string name="counselor_q_schedule">How can I fix an irregular sleep schedule?</string>
+    <string name="counselor_q_caffeine">When should I stop drinking coffee before bed?</string>
+    <string name="counselor_q_screens">What is a good 30-min screen-free wind-down routine?</string>
+    <string name="counselor_reflecting">Counselor is reflecting...</string>
+    <string name="counselor_voice">Voice dictation</string>
+    <string name="counselor_input_hint">Ask about sleep habits or routines...</string>
+    <string name="counselor_send">Send</string>
+
+    <string name="edit_tap_to_change_time">Tap to change alarm time</string>
+    <string name="edit_label_hint">e.g. Morning Battle, Gym Wake-Up</string>
+    <string name="edit_vibrate_description">Vibrate device while alarm is sounding</string>
+    <string name="edit_section_sound">Sound &amp; Sensory Awakening</string>
+    <string name="edit_section_safeguards">Safeguards &amp; Morning Boost</string>
+</resources>

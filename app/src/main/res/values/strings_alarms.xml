@@ -48,7 +48,6 @@
     <!-- Alarm editor -->
     <string name="edit_title_new">New alarm</string>
     <string name="edit_title_edit">Edit alarm</string>
-    <string name="edit_time">Time: %1$s</string>
     <string name="edit_label">Label</string>
     <string name="edit_repeat">Repeat</string>
     <string name="edit_mode">Mode</string>
@@ -74,7 +73,8 @@
     <string name="edit_sunrise_mode">Sunrise Glow Mode</string>
     <string name="edit_sunrise_mode_description">Displays a warm sunrise glow animation to naturally wake your eyes</string>
     <string name="edit_wake_check">Post-Wake-Up Check</string>
-    <string name="edit_wake_check_description">Confirms you are still awake 5 minutes after dismiss; rings again if ignored</string>
+    <string name="edit_wake_check_description">Rings again a few minutes after you finish, with a quick challenge, so you cannot dismiss it and fall back asleep</string>
+    <string name="edit_wake_check_locked">🔒 Always on for %1$s mode. The alarm rings again a few minutes after you finish, with a quick challenge.</string>
     <string name="edit_morning_briefing">Voice Morning Briefing</string>
     <string name="edit_morning_briefing_description">Speaks the time, your streak, and a morning motivational boost upon wake-up</string>
     <string name="edit_camera_warning_title">Camera access needed</string>

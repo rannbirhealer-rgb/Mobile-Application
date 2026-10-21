@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="edit_preset_weekdays">Weekdays</string>
+    <string name="edit_preset_weekends">Weekends</string>
+    <string name="edit_preset_every_day">Every day</string>
+    <string name="edit_date_pick">Or pick a specific date</string>
+    <string name="edit_date_set">On %1$s</string>
+    <string name="edit_date_clear">Clear date</string>
+    <string name="edit_date_passed">That moment has already passed. Pick a later time or another date.</string>
+</resources>

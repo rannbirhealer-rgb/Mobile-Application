@@ -7,6 +7,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -34,14 +35,14 @@ private fun randomProblem(difficulty: Int): Problem {
     }
 }
 
-/** Requires solving 3 problems in a row correctly to dismiss the alarm. */
+/** Requires solving [problemCount] problems in a row correctly (3 by default) to dismiss the alarm. */
 @Composable
-fun MathTaskScreen(difficulty: Int = 1, onSolved: () -> Unit) {
+fun MathTaskScreen(difficulty: Int = 1, problemCount: Int = 3, onSolved: () -> Unit) {
     var solvedCount by remember { mutableIntStateOf(0) }
     var problem by remember { mutableStateOf(randomProblem(difficulty)) }
     var input by remember { mutableStateOf("") }
     var error by remember { mutableStateOf(false) }
-    val target = 3
+    val target = problemCount
     val toggleSignDescription = stringResource(R.string.math_toggle_sign_description)
 
     Column(
@@ -49,7 +50,7 @@ fun MathTaskScreen(difficulty: Int = 1, onSolved: () -> Unit) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(stringResource(R.string.math_title, target), style = MaterialTheme.typography.titleMedium)
+        Text(pluralStringResource(R.plurals.math_title, target, target), style = MaterialTheme.typography.titleMedium)
         Text(stringResource(R.string.task_progress, solvedCount, target), style = MaterialTheme.typography.bodyMedium)
         Spacer(Modifier.height(24.dp))
         Text(problem.text, style = MaterialTheme.typography.displaySmall)

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_counselor_title">Sleep &amp; Wellness Counselor</string>
+    <string name="settings_counselor_body">Humane, non-judgmental sleep guidance. Open the Sleep AI tab to chat anytime. It works on this device with no setup.</string>
+    <string name="settings_counselor_ai_title">Smarter answers (optional)</string>
+    <string name="settings_counselor_ai_body">Add your own Google Gemini API key for fuller answers and for AI-written reading passages. With a key, the messages you send the counselor and your passage requests are sent to Google using that key. Without one, nothing leaves your device.</string>
+    <string name="settings_counselor_key_label">Gemini API key</string>
+    <string name="settings_counselor_key_save">Save key</string>
+    <string name="settings_counselor_key_saved">A key is saved on this device.</string>
+    <string name="settings_counselor_key_remove">Remove key</string>
+
+    <string name="settings_privacy_title">Privacy &amp; Anti-Deepfake Guarantee</string>
+    <string name="settings_privacy_intro">AlarmBoss never asks for photos of your home and never records audio while you sleep:</string>
+    <string name="settings_privacy_photos">🛡️ No home photos: no pictures of your living space are captured or stored.</string>
+    <string name="settings_privacy_audio">🎙️ No nighttime audio: the microphone is only used for voice answers you choose to give.</string>
+    <string name="settings_privacy_device">📱 On-device processing: barcode scans and pose detection run on the phone.</string>
+    <string name="settings_privacy_online">🌐 The only online feature is the optional counselor key above; it is off until you add one.</string>
+
+    <string name="settings_barcode_hint">e.g. 8901030383742</string>
+    <string name="settings_generating">Generating...</string>
+    <string name="settings_ai_generate">✨ AI Generate</string>
+    <string name="settings_ai_generate_needs_key">AI Generate adds new passages to your list. It needs a Gemini key (see the counselor card).</string>
+    <string name="settings_ai_generate_failed">Couldn\'t reach the AI. Check your connection and key. Your passages were not changed.</string>
+</resources>

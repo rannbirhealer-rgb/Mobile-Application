@@ -39,6 +39,23 @@ class AlarmPermissionsTest {
     }
 
     @Test
+    fun `medium steps asks for activity recognition`() {
+        assertEquals(
+            setOf(Manifest.permission.ACTIVITY_RECOGNITION),
+            requiredPermissions(AlarmMode.MEDIUM, StrictExerciseCategory.PHYSICAL, setOf(MediumTaskType.STEPS))
+        )
+    }
+
+    @Test
+    fun `several tasks ask for each of their permissions`() {
+        val tasks = setOf(MediumTaskType.BARCODE, MediumTaskType.STEPS, MediumTaskType.READING)
+        assertEquals(
+            setOf(Manifest.permission.CAMERA, Manifest.permission.ACTIVITY_RECOGNITION, Manifest.permission.RECORD_AUDIO),
+            requiredPermissions(AlarmMode.MEDIUM, StrictExerciseCategory.PHYSICAL, tasks)
+        )
+    }
+
+    @Test
     fun `medium reading or lyrics needs the microphone`() {
         val expected = setOf(Manifest.permission.RECORD_AUDIO)
         assertEquals(expected, requiredPermissions(AlarmMode.MEDIUM, StrictExerciseCategory.PHYSICAL, setOf(MediumTaskType.READING)))
@@ -52,9 +69,9 @@ class AlarmPermissionsTest {
     }
 
     @Test
-    fun `medium with every task needs both`() {
+    fun `medium with every task needs all three`() {
         assertEquals(
-            setOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO),
+            setOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO, Manifest.permission.ACTIVITY_RECOGNITION),
             requiredPermissions(AlarmMode.MEDIUM, StrictExerciseCategory.PHYSICAL, MediumTaskType.values().toSet())
         )
     }

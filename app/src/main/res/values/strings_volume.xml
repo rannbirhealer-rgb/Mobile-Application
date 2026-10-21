@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_sound_title">Alarm sound</string>
+    <string name="settings_sound_loudness">Loudness</string>
+    <string name="settings_sound_percent">%1$d%%</string>
+    <string name="settings_sound_gradual">Start quietly and get louder</string>
+    <string name="settings_sound_gradual_body">Fades up to your chosen loudness over 30 seconds, so you\'re woken gently.</string>
+    <string name="settings_sound_raise">Make sure it\'s audible</string>
+    <string name="settings_sound_raise_body">Raises the system alarm volume to maximum while an alarm rings, then puts it back. Stops a turned-down phone from sleeping through it.</string>
+</resources>

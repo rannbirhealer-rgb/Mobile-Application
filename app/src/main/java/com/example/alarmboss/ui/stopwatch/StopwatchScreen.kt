@@ -162,8 +162,8 @@ fun StopwatchScreen() {
                             modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("Lap", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text("Split Time", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(stringResource(R.string.stopwatch_col_lap), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(stringResource(R.string.stopwatch_col_split), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
 
@@ -182,7 +182,7 @@ fun StopwatchScreen() {
                                         color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
                                     ) {
                                         Text(
-                                            text = "Lap $lapNumber",
+                                            text = stringResource(R.string.stopwatch_lap_label, lapNumber),
                                             style = MaterialTheme.typography.labelSmall,
                                             fontWeight = FontWeight.Bold,
                                             color = MaterialTheme.colorScheme.primary,

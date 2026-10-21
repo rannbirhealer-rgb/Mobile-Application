@@ -30,6 +30,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.alarmboss.alarm.AlarmRescheduler
 import com.example.alarmboss.ui.alarms.AlarmEditScreen
 import com.example.alarmboss.ui.alarms.AlarmListScreen
 import com.example.alarmboss.ui.settings.SettingsScreen
@@ -38,16 +39,21 @@ import com.example.alarmboss.ui.stats.StatsViewModel
 import com.example.alarmboss.ui.stopwatch.StopwatchScreen
 import com.example.alarmboss.ui.theme.AlarmBossTheme
 import kotlinx.coroutines.launch
+import androidx.compose.material.icons.filled.Spa
+import com.example.alarmboss.ui.counselor.SleepCounselorScreen
+import com.example.alarmboss.ui.parent.ParentModeScreen
 
 private object Routes {
     const val MAIN = "main"
     const val EDIT = "edit"
+    const val PARENT_MODE = "parent_mode"
 }
 
-/** The four top-level screens, in the order they sit in the pager and the bottom bar. */
+/** The five top-level screens, in the order they sit in the pager and the bottom bar. */
 private enum class Tab(val labelRes: Int, val icon: ImageVector) {
     ALARMS(R.string.nav_alarms, Icons.Default.Alarm),
     STATS(R.string.nav_stats, Icons.Default.EmojiEvents),
+    COUNSELOR(R.string.nav_counselor, Icons.Default.Spa),
     STOPWATCH(R.string.nav_stopwatch, Icons.Default.Timer),
     SETTINGS(R.string.nav_settings, Icons.Default.Settings)
 }
@@ -56,6 +62,13 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Self-heal: make sure every enabled alarm is actually registered with the system. Covers
+        // alarms that arrived without being scheduled (a restored backup) or were lost somehow.
+        // Done here, not in Application.onCreate: an alarm firing starts the process too, and
+        // rescheduling then would race the ring handler.
+        val app = application as AlarmBossApp
+        app.appScope.launch { AlarmRescheduler(applicationContext, app.repository).rescheduleAll() }
 
         setContent {
             AlarmBossTheme {
@@ -73,9 +86,7 @@ private fun RequestRuntimePermissions() {
     // the alarm's full-screen notification can post at all.
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
     LaunchedEffect(Unit) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
+        launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 }
 
@@ -87,7 +98,8 @@ private fun AlarmBossRoot() {
         composable(Routes.MAIN) {
             MainTabs(
                 onAddAlarm = { navController.navigate("${Routes.EDIT}/new") },
-                onEditAlarm = { id -> navController.navigate("${Routes.EDIT}/$id") }
+                onEditAlarm = { id -> navController.navigate("${Routes.EDIT}/$id") },
+                onOpenParentMode = { navController.navigate(Routes.PARENT_MODE) }
             )
         }
         composable("${Routes.EDIT}/{alarmId}") { backStackEntry ->
@@ -95,16 +107,23 @@ private fun AlarmBossRoot() {
             val alarmId = idArg?.toLongOrNull()
             AlarmEditScreen(alarmId = alarmId, onDone = { navController.popBackStack() })
         }
+        composable(Routes.PARENT_MODE) {
+            ParentModeScreen(onBack = { navController.popBackStack() })
+        }
     }
 }
 
 /**
- * The four top-level screens as swipeable pages. The bottom bar and the pager share one
+ * The five top-level screens as swipeable pages. The bottom bar and the pager share one
  * [androidx.compose.foundation.pager.PagerState], so tapping a tab and swiping stay in sync, and
  * every page stays composed, so each keeps its scroll position and state while you move around.
  */
 @Composable
-private fun MainTabs(onAddAlarm: () -> Unit, onEditAlarm: (Long) -> Unit) {
+private fun MainTabs(
+    onAddAlarm: () -> Unit,
+    onEditAlarm: (Long) -> Unit,
+    onOpenParentMode: () -> Unit
+) {
     val tabs = Tab.entries
     val pagerState = rememberPagerState { tabs.size }
     val scope = rememberCoroutineScope()
@@ -151,7 +170,11 @@ private fun MainTabs(onAddAlarm: () -> Unit, onEditAlarm: (Long) -> Unit) {
             beyondViewportPageCount = tabs.size - 1
         ) { page ->
             when (tabs[page]) {
-                Tab.ALARMS -> AlarmListScreen(onAddAlarm = onAddAlarm, onEditAlarm = onEditAlarm)
+                Tab.ALARMS -> AlarmListScreen(
+                    onAddAlarm = onAddAlarm,
+                    onEditAlarm = onEditAlarm,
+                    onOpenParentMode = onOpenParentMode
+                )
                 Tab.STATS -> {
                     val app = LocalContext.current.applicationContext as AlarmBossApp
                     val statsViewModel: StatsViewModel = viewModel(
@@ -159,8 +182,9 @@ private fun MainTabs(onAddAlarm: () -> Unit, onEditAlarm: (Long) -> Unit) {
                     )
                     StatsScreen(statsViewModel)
                 }
+                Tab.COUNSELOR -> SleepCounselorScreen()
                 Tab.STOPWATCH -> StopwatchScreen()
-                Tab.SETTINGS -> SettingsScreen()
+                Tab.SETTINGS -> SettingsScreen(onOpenParentMode = onOpenParentMode)
             }
         }
     }

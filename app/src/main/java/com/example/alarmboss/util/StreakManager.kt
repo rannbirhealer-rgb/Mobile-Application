@@ -17,14 +17,46 @@ class StreakManager(context: Context) {
     fun projectedStreak(today: LocalDate = LocalDate.now()): Int =
         nextStreak(getCurrentStreak(today), lastWakeDate(), today)
 
-    /** Call once per alarm the user actually wakes up to and dismisses. Returns the new streak. */
-    fun recordSuccessfulWakeUp(today: LocalDate = LocalDate.now()): Int {
+    data class StreakResult(
+        val currentStreak: Int,
+        val isMorningWindow: Boolean,
+        val streakIncremented: Boolean
+    )
+
+    /** Call once per alarm the user actually wakes up to and dismisses. Returns the StreakResult.
+     * Streaks are strictly awarded for wake-ups completed within the morning window (5:00 AM - 10:00 AM).
+     */
+    fun recordSuccessfulWakeUpDetailed(
+        today: LocalDate = LocalDate.now(),
+        time: java.time.LocalTime = java.time.LocalTime.now()
+    ): StreakResult {
+        val current = getCurrentStreak(today)
+        val inWindow = isMorningWindow(time)
+
+        if (!inWindow) {
+            // Late mornings (> 10 AM) or early hours (< 5 AM) do not award or advance morning streaks.
+            return StreakResult(
+                currentStreak = current,
+                isMorningWindow = false,
+                streakIncremented = false
+            )
+        }
+
         val newStreak = projectedStreak(today)
         prefs.edit()
             .putInt(KEY_STREAK, newStreak)
             .putString(KEY_LAST_DATE, today.toString())
             .apply()
-        return newStreak
+        return StreakResult(
+            currentStreak = newStreak,
+            isMorningWindow = true,
+            streakIncremented = newStreak > current
+        )
+    }
+
+    /** Overload returning Int for backwards compatibility. */
+    fun recordSuccessfulWakeUp(today: LocalDate = LocalDate.now()): Int {
+        return recordSuccessfulWakeUpDetailed(today).currentStreak
     }
 
     companion object {
@@ -57,6 +89,19 @@ class StreakManager(context: Context) {
         fun activeStreak(storedStreak: Int, lastDate: LocalDate?, today: LocalDate): Int {
             if (lastDate == null) return 0
             return if (ChronoUnit.DAYS.between(lastDate, today) > 1L) 0 else storedStreak
+        }
+
+        const val MORNING_WINDOW_START_HOUR = 5
+        const val MORNING_WINDOW_END_HOUR = 10
+
+        /**
+         * Checks if the given time falls strictly within the morning window (5:00 AM - 10:00 AM).
+         * Late mornings (> 10:00:00 AM) and early dawn (< 5:00:00 AM) return false.
+         */
+        fun isMorningWindow(time: java.time.LocalTime = java.time.LocalTime.now()): Boolean {
+            val hour = time.hour
+            return (hour in MORNING_WINDOW_START_HOUR until MORNING_WINDOW_END_HOUR) ||
+                    (hour == MORNING_WINDOW_END_HOUR && time.minute == 0 && time.second == 0)
         }
     }
 }

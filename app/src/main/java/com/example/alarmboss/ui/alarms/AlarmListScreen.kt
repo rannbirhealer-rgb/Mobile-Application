@@ -8,15 +8,13 @@ import android.os.Build
 import android.provider.Settings
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.res.painterResource
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Alarm
@@ -29,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -39,27 +38,106 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.foundation.Image
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
 import com.example.alarmboss.R
 import com.example.alarmboss.data.Alarm
 import com.example.alarmboss.data.AlarmMode
 import com.example.alarmboss.data.isAlarmLocked
+import com.example.alarmboss.ui.common.HoldToConfirmButton
+import com.example.alarmboss.data.specificLocalDate
 import com.example.alarmboss.ui.theme.FlameGradientEnd
 import com.example.alarmboss.ui.theme.FlameGradientStart
-import com.example.alarmboss.util.formatTime12h
+import com.example.alarmboss.util.formatTime
+import android.widget.Toast
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.FamilyRestroom
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import com.example.alarmboss.data.ParentModeManager
+import com.example.alarmboss.ui.parent.ParentPinDialog
+import com.example.alarmboss.util.StreakManager
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlarmListScreen(
     onAddAlarm: () -> Unit,
     onEditAlarm: (Long) -> Unit,
+    onOpenParentMode: () -> Unit = {},
     viewModel: AlarmViewModel = viewModel()
 ) {
+    val context = LocalContext.current
+    val resources = LocalResources.current
+    val parentManager = remember { ParentModeManager(context) }
     val alarms by viewModel.alarms.collectAsState()
     val currentStreak by viewModel.streak.collectAsState(initial = 0)
+    val skipDates by viewModel.skipDates.collectAsState()
+    val holidayPrompt by viewModel.holidayPrompt.collectAsState()
 
+    var showTemplatesSheet by remember { mutableStateOf(false) }
+    val templateApplied = { label: String -> resources.getString(R.string.alarms_template_applied, label) }
+
+    // Parent PIN verification dialog state
+    var showPinDialog by remember { mutableStateOf(false) }
+    var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+
+    fun runProtectedAction(action: () -> Unit) {
+        if (parentManager.isLockActive()) {
+            pendingAction = action
+            showPinDialog = true
+        } else {
+            action()
+        }
+    }
     // Reload the streak whenever the screen is composed or resumed
     LaunchedEffect(Unit) {
         viewModel.loadStreak()
+        viewModel.refreshHolidays()
+    }
+
+    // Closing the question without answering hides it for now; it returns on the next launch.
+    var dismissedHoliday by remember { mutableStateOf<LocalDate?>(null) }
+    holidayPrompt?.takeIf { it.holiday.date != dismissedHoliday }?.let { prompt ->
+        HolidayPromptDialog(
+            prompt = prompt,
+            onSkip = { runProtectedAction { viewModel.answerHoliday(prompt, skip = true) } },
+            onKeep = { viewModel.answerHoliday(prompt, skip = false) },
+            onDismiss = { dismissedHoliday = prompt.holiday.date }
+        )
+    }
+    if (showTemplatesSheet) {
+        AlarmTemplatesBottomSheet(
+            onDismiss = { showTemplatesSheet = false },
+            onSelectTemplate = { templateAlarm ->
+                runProtectedAction {
+                    viewModel.save(templateAlarm)
+                    Toast.makeText(context, templateApplied(templateAlarm.label), Toast.LENGTH_SHORT).show()
+                }
+            }
+        )
+    }
+
+    if (showPinDialog) {
+        ParentPinDialog(
+            manager = parentManager,
+            message = stringResource(R.string.parent_pin_alarm_message),
+            confirmLabel = stringResource(R.string.parent_pin_unlock),
+            onVerified = {
+                showPinDialog = false
+                pendingAction?.invoke()
+                pendingAction = null
+            },
+            onDismiss = {
+                showPinDialog = false
+                pendingAction = null
+            }
+        )
     }
 
     Scaffold(
@@ -82,11 +160,33 @@ fun AlarmListScreen(
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                "Conquer your mornings",
+                                stringResource(R.string.alarms_tagline),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
+                    }
+                },
+                actions = {
+                    // Quick Templates Button
+                    FilledTonalButton(
+                        onClick = { showTemplatesSheet = true },
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                        modifier = Modifier.padding(end = 6.dp)
+                    ) {
+                        Icon(Icons.Default.Bolt, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(stringResource(R.string.alarms_templates), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    // Parent Mode Button
+                    IconButton(onClick = onOpenParentMode) {
+                        Icon(
+                            Icons.Default.FamilyRestroom,
+                            contentDescription = stringResource(R.string.parent_card_title),
+                            tint = if (parentManager.isParentModeActive()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -96,7 +196,7 @@ fun AlarmListScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = onAddAlarm,
+                onClick = { runProtectedAction(onAddAlarm) },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
                 shape = RoundedCornerShape(16.dp)
@@ -111,9 +211,47 @@ fun AlarmListScreen(
                 .padding(padding)
         ) {
             ExactAlarmPermissionBanner()
+            NotificationAccessBanner()
             BatteryOptimizationBanner()
 
-            // Hero Wake-Up Streak Card
+            // Parent Mode Status Banner if active
+            if (parentManager.isParentModeActive()) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.FamilyRestroom, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                stringResource(R.string.alarms_parent_active, parentManager.getChildName(), parentManager.getChildAge()),
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                        TextButton(
+                            onClick = onOpenParentMode,
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                        ) {
+                            Text(stringResource(R.string.alarms_parent_manage), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+
+            // Hero Wake-Up Streak Card (Morning Flame with Strict 5 AM - 10 AM rule)
             if (currentStreak > 0) {
                 Card(
                     modifier = Modifier
@@ -150,16 +288,21 @@ fun AlarmListScreen(
                                 }
                                 Spacer(Modifier.height(4.dp))
                                 Text(
-                                    text = "Rise and conquer. Morning slumber has no hold on you.",
+                                    text = stringResource(R.string.alarms_streak_window_title, StreakManager.MORNING_WINDOW_START_HOUR, StreakManager.MORNING_WINDOW_END_HOUR),
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = Color.White.copy(alpha = 0.92f)
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = stringResource(R.string.alarms_streak_window_body),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.White.copy(alpha = 0.90f)
                                 )
                             }
                         }
                     }
                 }
             }
-
             if (alarms.isEmpty()) {
                 Box(
                     modifier = Modifier
@@ -171,23 +314,15 @@ fun AlarmListScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Surface(
-                            shape = RoundedCornerShape(24.dp),
-                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f),
-                            modifier = Modifier.size(110.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Image(
-                                    painter = painterResource(R.drawable.app_logo),
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .size(96.dp)
-                                        .clip(RoundedCornerShape(20.dp))
-                                )
-                            }
-                        }
+                        Image(
+                            painter = painterResource(R.drawable.app_logo),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(96.dp)
+                                .clip(RoundedCornerShape(20.dp))
+                        )
                         Text(
-                            text = "No Alarms Scheduled",
+                            text = stringResource(R.string.alarms_empty_title),
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold
                         )
@@ -199,27 +334,29 @@ fun AlarmListScreen(
                         )
                         Spacer(Modifier.height(4.dp))
                         FilledTonalButton(
-                            onClick = onAddAlarm,
+                            onClick = { runProtectedAction(onAddAlarm) },
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Icon(Icons.Default.Add, contentDescription = null)
                             Spacer(Modifier.width(8.dp))
-                            Text("Create New Alarm")
+                            Text(stringResource(R.string.alarms_create))
                         }
                     }
                 }
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    // Bottom room for the add button, which would otherwise sit on top of the last alarm.
+                    contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 96.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(alarms, key = { it.id }) { alarm ->
                         AlarmRow(
                             alarm = alarm,
-                            onToggle = { enabled -> viewModel.setEnabled(alarm, enabled) },
-                            onClick = { onEditAlarm(alarm.id) },
-                            onDelete = { viewModel.delete(alarm) },
+                            skipDates = skipDates,
+                            onToggle = { enabled -> runProtectedAction { viewModel.setEnabled(alarm, enabled) } },
+                            onClick = { runProtectedAction { onEditAlarm(alarm.id) } },
+                            onDelete = { runProtectedAction { viewModel.delete(alarm) } },
                             modifier = Modifier.animateItem()
                         )
                     }
@@ -231,7 +368,6 @@ fun AlarmListScreen(
 
 @Composable
 private fun ExactAlarmPermissionBanner() {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
     val context = LocalContext.current
     val alarmManager = remember { context.getSystemService(Context.ALARM_SERVICE) as AlarmManager }
 
@@ -282,12 +418,13 @@ private fun ExactAlarmPermissionBanner() {
 @Composable
 private fun AlarmRow(
     alarm: Alarm,
+    skipDates: Set<LocalDate>,
     onToggle: (Boolean) -> Unit,
     onClick: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isLocked = isAlarmLocked(alarm.hour, alarm.minute, alarm.isEnabled)
+    val isLocked = isAlarmLocked(alarm, skipDates = skipDates)
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
     if (showDeleteConfirm) {
@@ -295,7 +432,7 @@ private fun AlarmRow(
             onDismissRequest = { showDeleteConfirm = false },
             title = { Text(stringResource(R.string.alarms_delete_title)) },
             text = {
-                Text(stringResource(R.string.alarms_delete_message, formatTime12h(alarm.hour, alarm.minute)))
+                Text(stringResource(R.string.alarms_delete_message, alarmTimeText(alarm.hour, alarm.minute)))
             },
             confirmButton = {
                 TextButton(onClick = {
@@ -309,6 +446,36 @@ private fun AlarmRow(
         )
     }
 
+    var showEmergencyUnlock by remember { mutableStateOf(false) }
+    if (showEmergencyUnlock) {
+        // The two-hour lock stops you disabling an alarm to dodge it, but a lock with no way out is
+        // unsafe (illness, a mistaken time, a real emergency). So there is one, made deliberately
+        // slow: a long press to find it, then a held button, never a single tap.
+        AlertDialog(
+            onDismissRequest = { showEmergencyUnlock = false },
+            title = { Text(stringResource(R.string.emergency_unlock_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Text(stringResource(R.string.emergency_unlock_body))
+                    HoldToConfirmButton(
+                        label = stringResource(R.string.emergency_unlock_hold, EMERGENCY_UNLOCK_SECONDS),
+                        holdMillis = EMERGENCY_UNLOCK_SECONDS * 1000L,
+                        onConfirmed = {
+                            showEmergencyUnlock = false
+                            onToggle(false)
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showEmergencyUnlock = false }) { Text(stringResource(R.string.action_cancel)) }
+            }
+        )
+    }
+
+    // Never delete on the swipe itself: it only asks, and the row springs back meanwhile.
     SwipeToDeleteRow(
         enabled = !isLocked,
         onRequestDelete = { showDeleteConfirm = true },
@@ -319,18 +486,23 @@ private fun AlarmRow(
             isLocked = isLocked,
             onToggle = onToggle,
             onClick = onClick,
-            onRequestDelete = { showDeleteConfirm = true }
+            onRequestDelete = { showDeleteConfirm = true },
+            onRequestEmergencyUnlock = { showEmergencyUnlock = true }
         )
     }
 }
 
+private const val EMERGENCY_UNLOCK_SECONDS = 5
+
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun AlarmCardContent(
     alarm: Alarm,
     isLocked: Boolean,
     onToggle: (Boolean) -> Unit,
     onClick: () -> Unit,
-    onRequestDelete: () -> Unit
+    onRequestDelete: () -> Unit,
+    onRequestEmergencyUnlock: () -> Unit
 ) {
     val cardBackground = if (isLocked) {
         MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
@@ -351,7 +523,11 @@ private fun AlarmCardContent(
         elevation = CardDefaults.cardElevation(defaultElevation = if (alarm.isEnabled) 2.dp else 0.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(enabled = !isLocked, onClick = onClick)
+            .combinedClickable(
+                onClick = { if (!isLocked) onClick() },
+                // A locked alarm can't be edited, but it must never be a trap: long-press finds the way out.
+                onLongClick = if (isLocked) onRequestEmergencyUnlock else null
+            )
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -366,7 +542,7 @@ private fun AlarmCardContent(
                 Column {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = formatTime12h(alarm.hour, alarm.minute),
+                            text = formatTime(alarm.hour, alarm.minute, rememberIs24Hour()),
                             style = MaterialTheme.typography.displaySmall,
                             fontWeight = FontWeight.Bold,
                             color = if (alarm.isEnabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
@@ -401,7 +577,7 @@ private fun AlarmCardContent(
                                 )
                                 Spacer(Modifier.width(4.dp))
                                 Text(
-                                    "Locked",
+                                    stringResource(R.string.alarms_locked_badge),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onErrorContainer,
                                     fontWeight = FontWeight.Bold
@@ -428,6 +604,22 @@ private fun AlarmCardContent(
 
             // Days of the week row
             DayChipsRow(repeatDays = alarm.repeatDays, isEnabled = alarm.isEnabled)
+
+            alarm.specificLocalDate()?.let { date ->
+                val locale = LocalConfiguration.current.locales[0]
+                Text(
+                    date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale)),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (isLocked) {
+                Text(
+                    stringResource(R.string.alarms_locked_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
 
             // Badges row: Mode + Superpower badges
             Row(

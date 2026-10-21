@@ -1,103 +1,85 @@
 package com.example.alarmboss.ui.theme
 
-import android.os.Build
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.SharedPreferences
+import android.graphics.Color as AndroidColor
+import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import com.example.alarmboss.util.ThemeMode
+import com.example.alarmboss.util.ThemeSettings
 
 private val DarkColorScheme = darkColorScheme(
-    primary = CyberViolet,
-    onPrimary = Color.White,
-    primaryContainer = CyberVioletContainer,
-    onPrimaryContainer = OnCyberVioletContainer,
-
-    secondary = LaserCyan,
-    onSecondary = Color(0xFF00363F),
-    secondaryContainer = LaserCyanContainer,
-    onSecondaryContainer = OnLaserCyanContainer,
-
-    tertiary = ElectricAmber,
-    onTertiary = Color(0xFF451A03),
-    tertiaryContainer = ElectricAmberContainer,
-    onTertiaryContainer = OnElectricAmberContainer,
-
-    error = CrimsonRage,
-    onError = Color.White,
-    errorContainer = CrimsonRageContainer,
-    onErrorContainer = OnCrimsonRageContainer,
-
-    background = DarkBackground,
-    onBackground = Color(0xFFF1F5F9),
-
-    surface = DarkSurface,
-    onSurface = Color(0xFFF1F5F9),
-    surfaceVariant = DarkSurfaceElevated,
-    onSurfaceVariant = Color(0xFF94A3B8),
-    surfaceTint = CyberViolet,
-
-    outline = DarkBorder,
-    outlineVariant = DarkDivider
+    primary = Purple80,
+    secondary = PurpleGrey80,
+    tertiary = Pink80
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = RoyalIndigoDark,
-    onPrimary = Color.White,
-    primaryContainer = RoyalIndigoContainer,
-    onPrimaryContainer = OnRoyalIndigoContainer,
-
-    secondary = LaserCyan,
-    onSecondary = Color.White,
-    secondaryContainer = Color(0xFFE0F2FE),
-    onSecondaryContainer = Color(0xFF0369A1),
-
-    tertiary = ElectricAmberDark,
-    onTertiary = Color.White,
-    tertiaryContainer = Color(0xFFFEF3C7),
-    onTertiaryContainer = Color(0xFF78350F),
-
-    error = CrimsonRage,
-    onError = Color.White,
-    errorContainer = Color(0xFFFFE4E6),
-    onErrorContainer = Color(0xFF9F1239),
-
-    background = LightBackground,
-    onBackground = Color(0xFF0F172A),
-
-    surface = LightSurface,
-    onSurface = Color(0xFF0F172A),
-    surfaceVariant = LightSurfaceElevated,
-    onSurfaceVariant = Color(0xFF64748B),
-    surfaceTint = RoyalIndigo,
-
-    outline = LightBorder,
-    outlineVariant = LightDivider
+    primary = Purple40,
+    secondary = PurpleGrey40,
+    tertiary = Pink40
 )
+
+/**
+ * The stored theme choice, kept current: the Settings screen writes it from another place, so this
+ * listens for changes and every screen using [AlarmBossTheme] switches the moment it is changed.
+ */
+@Composable
+fun rememberThemeMode(): ThemeMode {
+    val context = LocalContext.current
+    val settings = remember(context) { ThemeSettings(context) }
+    var mode by remember { mutableStateOf(settings.mode) }
+    DisposableEffect(context) {
+        val prefs = context.getSharedPreferences(ThemeSettings.PREFS_NAME, Context.MODE_PRIVATE)
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == ThemeSettings.KEY_MODE) mode = settings.mode
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
+    return mode
+}
 
 @Composable
 fun AlarmBossTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // Keep dynamicColor false by default to ensure the signature premium RPG aesthetic
-    dynamicColor: Boolean = false,
+    themeMode: ThemeMode = rememberThemeMode(),
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
+    val darkTheme = themeMode.isDark(isSystemInDarkTheme())
+
+    // The status and navigation bar icons must be dark on a light screen and light on a dark one. The
+    // system only knows its own mode, so when the app overrides it the bars are told explicitly.
+    val activity = LocalContext.current.findComponentActivity()
+    DisposableEffect(activity, darkTheme) {
+        activity?.enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.auto(AndroidColor.TRANSPARENT, AndroidColor.TRANSPARENT) { darkTheme },
+            navigationBarStyle = SystemBarStyle.auto(AndroidColor.TRANSPARENT, AndroidColor.TRANSPARENT) { darkTheme }
+        )
+        onDispose { }
     }
 
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme,
         typography = Typography,
         content = content
     )
+}
+
+private tailrec fun Context.findComponentActivity(): ComponentActivity? = when (this) {
+    is ComponentActivity -> this
+    is ContextWrapper -> baseContext.findComponentActivity()
+    else -> null
 }
